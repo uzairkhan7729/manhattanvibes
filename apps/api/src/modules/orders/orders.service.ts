@@ -283,8 +283,17 @@ export async function cancelOrder(tenantId: string, orderId: string, actor: { us
 // Reads
 // ──────────────────────────────────────────────────────────────────────────
 
-export async function getOrder(tenantId: string, id: string): Promise<OrderDoc> {
-  const doc = await OrderModel.findOne({ _id: tid(id), tenantId: tid(tenantId) }).exec();
+/**
+ * Look up an order by either its Mongo ObjectId or its human-friendly
+ * orderNumber (e.g. "RUH-1-00001"). Lets customers paste either into the
+ * tracking URL.
+ */
+export async function getOrder(tenantId: string, idOrNumber: string): Promise<OrderDoc> {
+  const looksLikeObjectId = /^[a-f0-9]{24}$/i.test(idOrNumber);
+  const query = looksLikeObjectId
+    ? { _id: tid(idOrNumber), tenantId: tid(tenantId) }
+    : { orderNumber: idOrNumber, tenantId: tid(tenantId) };
+  const doc = await OrderModel.findOne(query).exec();
   if (!doc) throw new NotFoundError('Order');
   return doc;
 }

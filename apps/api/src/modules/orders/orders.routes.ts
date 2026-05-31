@@ -75,7 +75,8 @@ ordersRouter.get('/', requireAuth, requirePermission('orders:read'),
   }));
 
 ordersRouter.get('/:id', requireAuth, asyncHandler(async (req: Request, res: Response) => {
-  const id = objectIdSchema.parse(req.params.id);
+  // Accepts ObjectId OR human-friendly orderNumber (e.g. "RUH-1-00001").
+  const id = z.string().min(1).parse(req.params.id);
   res.json(await svc.getOrder(req.tenantId, id));
 }));
 
