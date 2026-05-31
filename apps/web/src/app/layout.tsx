@@ -2,23 +2,31 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
-  title: 'Manhattan Vibes',
-  description: 'Order pizza, burgers & more — direct from Manhattan Vibes.',
+  title: 'Manhattan Vibes — Pizza, Burgers & More',
+  description: 'Hand-tossed pizza, flame-grilled burgers and uncompromising ingredients. Order delivery or pickup across Saudi Arabia.',
+  openGraph: {
+    title: 'Manhattan Vibes',
+    description: 'Hand-tossed pizza, flame-grilled burgers, delivered hot.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
   return (
     <html lang="en">
       <head>
-        <link rel="preconnect" href="https://rsms.me/" />
+        <link rel="preconnect" href="https://rsms.me/" crossOrigin="" />
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
       </head>
-      <body className="bg-slate-50 text-slate-900 min-h-full">
+      <body className="min-h-full flex flex-col">
         <Providers>
           <Header />
-          <main className="min-h-[calc(100vh-64px)]">{children}</main>
+          <main className="flex-1">{children}</main>
+          <Footer />
         </Providers>
       </body>
     </html>

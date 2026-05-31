@@ -1,17 +1,17 @@
 'use client';
-import { Flame, Leaf, Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { MapPin } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
+import { ProductCard, type ProductLike } from '@/components/ProductCard';
 import { useCart } from '@/lib/cart-store';
-import { fmtSAR } from '@/lib/format';
+import { CATEGORY_IMAGES } from '@/lib/images';
 
 import { PizzaBuilder } from './pizza-builder';
 
-interface Category { _id: string; name: { en: string; ar?: string }; slug: string }
-interface Product {
-  id: string; sku: string; name: { en: string; ar?: string };
-  effectivePrice: number; isAvailable: boolean; type: 'simple' | 'configurable' | 'combo';
-  categoryId: string; isVeg?: boolean; spicyLevel?: number;
+interface Category { _id: string; name: { en: string; ar?: string }; slug: string; displayOrder?: number }
+interface Product extends ProductLike {
   sizes?: Array<{ code: 'S' | 'M' | 'L' | 'XL'; priceDelta: number; maxToppings?: number }>;
   crusts?: Array<{ code: string; name: { en: string }; priceDelta: number }>;
 }
@@ -26,95 +26,133 @@ export function MenuClient({ categories, products, branches }: { categories: Cat
     if (!cart.branchId && branches[0]) cart.setBranch(branches[0]._id);
   }, [cart, branches]);
 
+  // Highlight the section currently in view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((e) => e.isIntersecting);
+        if (visible) {
+          const id = visible.target.id.replace('cat-', '');
+          if (id) setActiveCat(id);
+        }
+      },
+      { rootMargin: '-30% 0px -55% 0px' },
+    );
+    categories.forEach((c) => {
+      const el = document.getElementById(`cat-${c._id}`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [categories]);
+
+  const productsBySlug = useMemo(() => new Map(categories.map((c) => [c._id, c.slug])), [categories]);
   const productsByCat = useMemo(() => {
     const m = new Map<string, Product[]>();
     for (const p of products) {
       const arr = m.get(p.categoryId) ?? [];
-      arr.push(p);
+      arr.push({ ...p, categorySlug: productsBySlug.get(p.categoryId) });
       m.set(p.categoryId, arr);
     }
     return m;
-  }, [products]);
-
-  function addSimple(p: Product): void {
-    cart.add({
-      productId: p.id, productName: p.name.en, qty: 1,
-      estimatedUnitPrice: p.effectivePrice,
-    });
-  }
+  }, [products, productsBySlug]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <header className="mb-6 flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Menu</h1>
-          <p className="text-sm text-slate-500">Prices include 15% VAT.</p>
+    <>
+      {/* Menu hero — small banner */}
+      <section className="relative h-[36vh] min-h-[280px] -mt-20 overflow-hidden bg-ink-900">
+        <Image
+          src={CATEGORY_IMAGES.pizza!}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover opacity-60"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-ink-900/40 via-ink-900/40 to-ink-900/95" />
+        <div className="relative h-full container-x flex flex-col justify-end pb-10 pt-32 text-white">
+          <span className="pill-glass w-fit">Our menu</span>
+          <h1 className="hero-h1 mt-3">
+            Pick your <span className="text-brand-400">favorite</span>
+          </h1>
+          <p className="mt-3 text-stone-200 max-w-xl">Prices include 15% VAT. Branch may affect pricing & availability.</p>
         </div>
-        <div>
-          <label className="text-xs text-slate-500 block mb-1">Branch</label>
-          <select className="input w-56" value={cart.branchId ?? ''} onChange={(e) => cart.setBranch(e.target.value)}>
-            {branches.map((b) => <option key={b._id} value={b._id}>{b.name.en}</option>)}
+      </section>
+
+      <div className="container-x pb-24 -mt-8 relative z-10">
+        {/* Branch selector card */}
+        <div className="surface p-4 md:p-5 shadow-card flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-brand-100 text-brand-600 grid place-items-center">
+              <MapPin className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-widest text-stone-500 font-semibold">Ordering from</div>
+              <div className="font-semibold">{branches.find((b) => b._id === cart.branchId)?.name.en ?? 'Pick a branch'}</div>
+            </div>
+          </div>
+          <select className="input max-w-xs" value={cart.branchId ?? ''} onChange={(e) => cart.setBranch(e.target.value)}>
+            {branches.map((b) => <option key={b._id} value={b._id}>{b.name.en} ({b.code})</option>)}
           </select>
         </div>
-      </header>
 
-      {/* Category tabs */}
-      <div className="sticky top-16 z-10 bg-slate-50/80 backdrop-blur border-b border-slate-200 -mx-4 px-4 mb-6 overflow-x-auto">
-        <div className="flex gap-1">
-          {categories.map((c) => (
-            <button
-              key={c._id}
-              onClick={() => { setActiveCat(c._id); document.getElementById(`cat-${c._id}`)?.scrollIntoView({ behavior: 'smooth' }); }}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 ${activeCat === c._id ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
-            >
-              {c.name.en}
-            </button>
-          ))}
+        {/* Sticky category tabs */}
+        <div className="sticky top-20 z-20 mt-6 -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="surface px-2 py-2 shadow-card overflow-x-auto no-scrollbar">
+            <div className="flex gap-1 min-w-max">
+              {categories.map((c) => (
+                <button
+                  key={c._id}
+                  onClick={() => document.getElementById(`cat-${c._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className={`relative px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition ${
+                    activeCat === c._id ? 'bg-brand-500 text-white shadow-glow' : 'text-ink-700 hover:bg-stone-100'
+                  }`}
+                >
+                  {c.name.en}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Product grid */}
-      <div className="space-y-10">
-        {categories.map((c) => {
-          const items = productsByCat.get(c._id) ?? [];
-          if (items.length === 0) return null;
-          return (
-            <section key={c._id} id={`cat-${c._id}`}>
-              <h2 className="text-2xl font-bold mb-3">{c.name.en}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {items.map((p) => (
-                  <article key={p.id} className="card p-4 flex flex-col gap-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold">{p.name.en}</h3>
-                        <p className="text-xs text-slate-500 capitalize">{p.type}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {p.isVeg && <Leaf className="h-4 w-4 text-emerald-500" />}
-                        {p.spicyLevel && p.spicyLevel > 0 ? <Flame className="h-4 w-4 text-rose-500" /> : null}
-                      </div>
-                    </div>
-                    <div className="flex items-end justify-between mt-auto">
-                      <div className="font-bold text-lg">{fmtSAR(p.effectivePrice)}</div>
-                      {p.type === 'configurable' ? (
-                        <button className="btn-primary" onClick={() => setBuilderProduct(p)}>Customize</button>
-                      ) : (
-                        <button className="btn-primary" disabled={!p.isAvailable} onClick={() => addSimple(p)}>
-                          <Plus className="h-4 w-4" /> Add
-                        </button>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {/* Category sections */}
+        <div className="mt-10 space-y-16">
+          {categories.map((c, ci) => {
+            const items = productsByCat.get(c._id) ?? [];
+            if (items.length === 0) return null;
+            return (
+              <section key={c._id} id={`cat-${c._id}`} className="scroll-mt-40">
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="flex items-end justify-between mb-6"
+                >
+                  <div>
+                    <span className="pill-brand">{ci === 0 ? 'Signature' : 'Menu'}</span>
+                    <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mt-2">{c.name.en}</h2>
+                  </div>
+                  <span className="text-sm text-stone-500">{items.length} items</span>
+                </motion.div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {items.map((p, i) => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      onCustomize={(prod) => setBuilderProduct(prod as Product)}
+                      index={i}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </div>
 
       {builderProduct && (
         <PizzaBuilder product={builderProduct} onClose={() => setBuilderProduct(null)} />
       )}
-    </div>
+    </>
   );
 }
