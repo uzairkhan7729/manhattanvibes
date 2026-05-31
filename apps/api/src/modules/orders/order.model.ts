@@ -116,7 +116,12 @@ OrderSchema.index({ tenantId: 1, branchId: 1, orderNumber: 1 }, { unique: true }
 OrderSchema.index({ tenantId: 1, branchId: 1, state: 1, createdAt: -1 });
 OrderSchema.index({ tenantId: 1, customerId: 1, createdAt: -1 });
 OrderSchema.index({ 'delivery.driverId': 1, state: 1 });
-OrderSchema.index({ clientOpId: 1, branchId: 1 }, { unique: true, sparse: true });
+// Sparse compound indexes still index docs where the field is null — use a
+// partial filter so this only applies when clientOpId is actually a string.
+OrderSchema.index(
+  { clientOpId: 1, branchId: 1 },
+  { unique: true, partialFilterExpression: { clientOpId: { $type: 'string' } } },
+);
 OrderSchema.index({ tenantId: 1, createdAt: -1 });
 
 export type OrderDoc = InferSchemaType<typeof OrderSchema> & { _id: Types.ObjectId };
