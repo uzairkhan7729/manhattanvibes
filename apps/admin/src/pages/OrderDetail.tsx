@@ -62,7 +62,8 @@ export function OrderDetailPage(): JSX.Element {
     queryKey: ['order', id],
     queryFn: () => api.get<Order>(`/orders/${id}`),
     enabled: !!id,
-    refetchInterval: 5000,                // keep status fresh while the page is open
+    refetchInterval: 5000,                  // keep status fresh while the page is open
+    refetchIntervalInBackground: true,      // …even if the admin tab is blurred
   });
 
   const transition = useMutation({

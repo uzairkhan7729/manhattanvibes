@@ -30,6 +30,7 @@ export default function TrackPage(): JSX.Element {
     queryKey: ['track', id, !!auth.accessToken],
     queryFn: () => apiGet<Order>(`/orders/${id}`, auth.accessToken ? { authorization: `Bearer ${auth.accessToken}` } : undefined),
     refetchInterval: 5_000,
+    refetchIntervalInBackground: true,    // poll even when tab is blurred
     enabled: !!id,
     retry: false,
   });
