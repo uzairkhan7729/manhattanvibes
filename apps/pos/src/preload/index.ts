@@ -32,11 +32,18 @@ const api = {
   },
 };
 
-if (process.contextIsolated) {
+/**
+ * Expose the API on window.mv. Main always sets contextIsolation:true, so
+ * contextBridge is always the right path. We previously gated this on
+ * `process.contextIsolated` but that's undefined in ESM preload contexts,
+ * which made the bridge silently fall through to globalThis (isolated from
+ * the renderer) and window.mv was never defined.
+ */
+try {
   contextBridge.exposeInMainWorld('mv', api);
-} else {
-  // dev sandbox=false fallback
-  (globalThis as unknown as { mv: typeof api }).mv = api;
+} catch (err: unknown) {
+  // eslint-disable-next-line no-console
+  console.error('[preload] contextBridge.exposeInMainWorld failed:', err);
 }
 
 export type MvApi = typeof api;
