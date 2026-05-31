@@ -1,0 +1,48 @@
+# Sequence — Online Order Placement (web/mobile)
+
+```
+Customer    Client       API              Mongo     Redis    Payment    KDS    Driver
+   │          │           │                 │         │         │         │       │
+   │ tap Pay  │           │                 │         │         │         │       │
+   ├─────────►│           │                 │         │         │         │       │
+   │          │ POST /orders { ... }        │         │         │         │       │
+   │          ├──────────►│                 │         │         │         │       │
+   │          │           │ validate (Zod)  │         │         │         │       │
+   │          │           │ priceQuote()    │         │         │         │       │
+   │          │           │ reserveInventory│         │         │         │       │
+   │          │           ├────────────────►│         │         │         │       │
+   │          │           │ createOrder     │         │         │         │       │
+   │          │           ├────────────────►│         │         │         │       │
+   │          │           │ idempotency get/set       │         │         │       │
+   │          │           ├──────────────────────────►│         │         │       │
+   │          │           │ createPaymentIntent       │         │         │       │
+   │          │           ├────────────────────────────────────►│         │       │
+   │          │           │◄────────────────────────────────────┤         │       │
+   │          │  redirect/sdk params                                       │       │
+   │          │◄──────────┤                                                │       │
+   │ complete │           │                                                │       │
+   │  3DS/sdk │           │                                                │       │
+   ├─────────►│           │                                                │       │
+   │          │ ...gateway redirect...                                     │       │
+   │          │                                                            │       │
+   │          │ webhook  POST /payments/webhook (HMAC)                     │       │
+   │          │◄───────────────────────────────────────                    │       │
+   │          │           │ verify, updatePayment, updateOrder            │       │
+   │          │           ├────────────────►│                              │       │
+   │          │           │ emit order.confirmed                           │       │
+   │          │           ├──────────────────────────────────────────────►│       │
+   │          │ Socket.IO order.state_changed                              │       │
+   │          │◄──────────┤                                                │       │
+   │   stepper updates                                                    │       │
+   │          │           │ enqueue push/SMS notifications                 │       │
+   │          │           │           Kitchen bumps via /kds/bump          │       │
+   │          │           │◄──────────────────────────────────────────────┤       │
+   │          │           │ state=READY → DeliveryService.assign           │       │
+   │          │           ├──────────────────────────────────────────────────────►│
+   │          │           │ driver accepts                                          │
+   │          │           │◄──────────────────────────────────────────────────────┤
+   │          │           │ driver GPS heartbeats → Socket.IO                      │
+   │   live map updates                                                            │
+   │          │           │ POD → state=DELIVERED → loyalty.credit                 │
+   │   delivered push                                                              │
+```

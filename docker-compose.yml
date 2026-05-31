@@ -1,0 +1,56 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: mv-mongo
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test: |
+        mongosh --quiet --eval "try { rs.status().ok } catch(e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }"
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    volumes:
+      - ./.data/mongo:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: mv-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./.data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Mailhog — local SMTP capture for transactional emails during dev
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mv-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+
+  # MinIO — S3-compatible local object store
+  minio:
+    image: minio/minio:latest
+    container_name: mv-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9100:9000"   # API (host port 9100 to avoid local conflicts)
+      - "9101:9001"   # Console
+    volumes:
+      - ./.data/minio:/data
