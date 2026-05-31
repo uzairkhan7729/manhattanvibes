@@ -13,12 +13,19 @@ const nav = [
   { href: '/account', label: 'Account' },
 ];
 
+// Pages whose first viewport is a dark hero image — header starts transparent
+// with white text over them, then transitions to solid white on scroll.
+const HERO_PAGES = new Set(['/', '/menu']);
+
 export function Header(): JSX.Element {
   const lines = useCart((s) => s.lines);
   const count = lines.reduce((s, l) => s + l.qty, 0);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const path = usePathname();
+  const overHero = HERO_PAGES.has(path ?? '');
+  // Light mode = transparent header with white text. Only over a hero AND when not scrolled.
+  const lightMode = overHero && !scrolled;
 
   useEffect(() => {
     const onScroll = (): void => setScrolled(window.scrollY > 8);
@@ -32,9 +39,9 @@ export function Header(): JSX.Element {
   return (
     <header
       className={`sticky top-0 z-40 transition-all duration-300 ${
-        scrolled
-          ? 'bg-white/85 backdrop-blur-md border-b border-stone-200/80 shadow-sm'
-          : 'bg-transparent border-b border-transparent'
+        lightMode
+          ? 'bg-transparent'
+          : 'bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-sm'
       }`}
     >
       <div className="container-x h-16 md:h-20 flex items-center justify-between">
@@ -46,29 +53,42 @@ export function Header(): JSX.Element {
             </div>
           </div>
           <div className="leading-tight">
-            <div className="font-extrabold text-ink-900 tracking-tight">Manhattan Vibes</div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-brand-600 font-semibold">Pizza · Burgers · More</div>
+            <div className={`font-extrabold tracking-tight ${lightMode ? 'text-white drop-shadow' : 'text-ink-900'}`}>
+              Manhattan Vibes
+            </div>
+            <div className={`text-[10px] uppercase tracking-[0.18em] font-semibold ${lightMode ? 'text-brand-200' : 'text-brand-600'}`}>
+              Pizza · Burgers · More
+            </div>
           </div>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
-          {nav.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={`relative px-4 py-2 text-sm font-medium rounded-full transition ${
-                path?.startsWith(n.href)
+          {nav.map((n) => {
+            const active = path?.startsWith(n.href);
+            const base = 'relative px-4 py-2 text-sm font-medium rounded-full transition';
+            const styles = lightMode
+              ? (active
+                  ? 'text-white bg-white/15 backdrop-blur ring-1 ring-white/20'
+                  : 'text-white/90 hover:text-white hover:bg-white/10')
+              : (active
                   ? 'text-brand-700 bg-brand-50'
-                  : 'text-ink-700 hover:text-brand-700 hover:bg-stone-100'
-              }`}
-            >
-              {n.label}
-            </Link>
-          ))}
+                  : 'text-ink-700 hover:text-brand-700 hover:bg-stone-100');
+            return (
+              <Link key={n.href} href={n.href} className={`${base} ${styles}`}>
+                {n.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link href="/account" aria-label="Account" className="hidden md:inline-flex btn-ghost rounded-full p-2">
+          <Link
+            href="/account"
+            aria-label="Account"
+            className={`hidden md:inline-flex rounded-full p-2 transition ${
+              lightMode ? 'text-white/90 hover:bg-white/10 hover:text-white' : 'text-ink-700 hover:bg-stone-100'
+            }`}
+          >
             <User className="h-5 w-5" />
           </Link>
           <Link href="/cart" className="btn-primary relative">
@@ -89,7 +109,9 @@ export function Header(): JSX.Element {
             </AnimatePresence>
           </Link>
           <button
-            className="md:hidden btn-ghost rounded-full p-2"
+            className={`md:hidden rounded-full p-2 transition ${
+              lightMode ? 'text-white/90 hover:bg-white/10 hover:text-white' : 'text-ink-700 hover:bg-stone-100'
+            }`}
             aria-label="Open menu"
             onClick={() => setMobileOpen((v) => !v)}
           >
@@ -111,7 +133,7 @@ export function Header(): JSX.Element {
                 <Link
                   key={n.href}
                   href={n.href}
-                  className="block px-4 py-3 rounded-xl text-base font-medium hover:bg-stone-50"
+                  className="block px-4 py-3 rounded-xl text-base font-medium text-ink-900 hover:bg-stone-50"
                 >
                   {n.label}
                 </Link>
