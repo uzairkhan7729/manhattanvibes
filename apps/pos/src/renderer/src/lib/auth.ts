@@ -7,15 +7,36 @@ interface Session { user: { id: string; role: string; fullName: { en: string } }
 const listeners = new Set<() => void>();
 let cache: Session = { user: null, accessToken: null, branchId: null };
 
-async function load(): Promise<void> {
-  const raw = await window.mv.kv.get('session');
-  if (raw) cache = JSON.parse(raw) as Session;
+/**
+ * Guard against the preload script having failed to load. When that happens,
+ * window.mv is undefined and any access to .kv throws an opaque error mid-render.
+ * Surface a clear error instead so the bug is obvious from the renderer side.
+ */
+function bridge(): NonNullable<Window['mv']> {
+  const mv = (window as Window).mv;
+  if (!mv) {
+    throw new Error(
+      'POS preload bridge (window.mv) is not available. ' +
+      'The preload script failed to load — restart the Electron app, ' +
+      'or check apps/pos/src/main/index.ts preload path.',
+    );
+  }
+  return mv;
 }
 
-void load();
+async function load(): Promise<void> {
+  const raw = await bridge().kv.get('session');
+  if (raw) cache = JSON.parse(raw) as Session;
+  listeners.forEach((l) => l());
+}
+
+void load().catch((err: unknown) => {
+  // eslint-disable-next-line no-console
+  console.error('[pos.auth] failed to load session from local store:', err);
+});
 
 function save(): void {
-  void window.mv.kv.set('session', JSON.stringify(cache));
+  void bridge().kv.set('session', JSON.stringify(cache));
   listeners.forEach((l) => l());
 }
 

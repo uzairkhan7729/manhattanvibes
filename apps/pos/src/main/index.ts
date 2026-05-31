@@ -16,7 +16,9 @@ function createWindow(): void {
     title: 'Manhattan Vibes POS',
     backgroundColor: '#0f172a',
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      // electron-vite outputs an ESM preload (.mjs) because apps/pos is
+      // "type": "module". Falls back to .js if a future build switches to CJS.
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
       contextIsolation: true,
     },
