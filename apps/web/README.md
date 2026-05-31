@@ -7,10 +7,10 @@ Next.js 15 (App Router) + Tailwind + TanStack Query.
 ```powershell
 npm run infra:up                          # mongo + redis
 npm run dev --workspace=@mv/api           # API on :8088
-npm run dev --workspace=@mv/web           # web on :3001 (proxies /api -> :8088)
+npm run dev --workspace=@mv/web           # web on :4001 (proxies /api -> :8088)
 ```
 
-Visit http://localhost:3001.
+Visit http://localhost:4001.
 
 ## Surfaces
 

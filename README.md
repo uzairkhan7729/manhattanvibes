@@ -30,7 +30,7 @@ npm run dev --workspace=@mv/api
 # 5. In another terminal, run any of the UIs:
 npm run dev --workspace=@mv/admin     # http://localhost:5173 — admin portal
 npm run dev --workspace=@mv/kds       # http://localhost:5174 — kitchen display
-npm run dev --workspace=@mv/web       # http://localhost:3001 — customer website
+npm run dev --workspace=@mv/web       # http://localhost:4001 — customer website
 npm run dev --workspace=@mv/pos       # opens Electron POS window
 ```
 
@@ -133,7 +133,7 @@ Ports:
 - API: 8088
 - Admin: 5173
 - KDS: 5174
-- Web: 3001
+- Web: 4001
 - POS: Electron window (no port)
 - MinIO: 9100 (API), 9101 (console)
 - Mailhog: 1025 (SMTP), 8025 (web UI)
