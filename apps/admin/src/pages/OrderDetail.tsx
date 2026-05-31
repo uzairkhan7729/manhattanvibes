@@ -1,11 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, RotateCcw, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, RotateCcw, Truck, XCircle } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
 import { api, ApiError } from '../lib/api';
 import { fmtDate, fmtSAR } from '../lib/format';
 
-interface OrderItem { productId: string; productSnapshot: { name: { en: string; ar?: string }; sku: string }; qty: number; sizeCode?: string; crustCode?: string; unitPrice: number; lineTotal: number; modifiers: Array<{ type: string; unitPrice: number; qty: number }>; notes?: string }
+interface OrderItem {
+  productId: string;
+  productSnapshot: { name: { en: string; ar?: string }; sku: string };
+  qty: number; sizeCode?: string; crustCode?: string;
+  unitPrice: number; lineTotal: number;
+  modifiers: Array<{ type: string; unitPrice: number; qty: number }>;
+  notes?: string;
+}
 interface Order {
   _id: string; orderNumber: string; state: string; channel: string; type: string;
   customerId?: string; tableId?: string; createdAt: string;
@@ -15,17 +22,48 @@ interface Order {
   audit?: { transitions?: Array<{ from: string; to: string; ts: string; reason?: string }> };
 }
 
-const NEXT_STATE_HINT: Record<string, string> = {
-  CONFIRMED: 'PREPARING',
-  PREPARING: 'BAKING',
-  BAKING:    'READY',
-  READY:     'CLOSED',
+/**
+ * Compute the next state + button affordance for an order. Order-type-aware
+ * because delivery has an OUT_FOR_DELIVERY hop that pickup/takeaway/dinein skip.
+ */
+function nextAction(order: Order): { to: string; label: string; icon: React.ComponentType<{ className?: string }> } | null {
+  switch (order.state) {
+    case 'CREATED':           return { to: 'CONFIRMED',        label: 'Accept order',       icon: CheckCircle2 };
+    case 'CONFIRMED':         return { to: 'PREPARING',        label: 'Start preparing',    icon: RotateCcw };
+    case 'PREPARING':         return { to: 'BAKING',           label: 'Move to baking',     icon: RotateCcw };
+    case 'BAKING':            return { to: 'READY',            label: 'Mark ready',         icon: CheckCircle2 };
+    case 'READY':
+      return order.type === 'delivery'
+        ? { to: 'OUT_FOR_DELIVERY', label: 'Out for delivery', icon: Truck }
+        : { to: 'CLOSED',           label: 'Close order',      icon: CheckCircle2 };
+    case 'OUT_FOR_DELIVERY':  return { to: 'DELIVERED',        label: 'Mark delivered',     icon: CheckCircle2 };
+    case 'DELIVERED':         return { to: 'CLOSED',           label: 'Close order',        icon: CheckCircle2 };
+    default:                  return null;
+  }
+}
+
+const stateBadge: Record<string, string> = {
+  CREATED:           'bg-slate-100 text-slate-700',
+  CONFIRMED:         'bg-blue-100 text-blue-700',
+  PREPARING:         'bg-amber-100 text-amber-700',
+  BAKING:            'bg-orange-100 text-orange-700',
+  READY:             'bg-emerald-100 text-emerald-700',
+  OUT_FOR_DELIVERY:  'bg-violet-100 text-violet-700',
+  DELIVERED:         'bg-green-100 text-green-700',
+  CLOSED:            'bg-slate-200 text-slate-700',
+  CANCELLED:         'bg-red-100 text-red-700',
+  REFUNDED:          'bg-rose-100 text-rose-700',
 };
 
 export function OrderDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ['order', id], queryFn: () => api.get<Order>(`/orders/${id}`), enabled: !!id });
+  const query = useQuery({
+    queryKey: ['order', id],
+    queryFn: () => api.get<Order>(`/orders/${id}`),
+    enabled: !!id,
+    refetchInterval: 5000,                // keep status fresh while the page is open
+  });
 
   const transition = useMutation({
     mutationFn: (to: string) => api.post(`/orders/${id}/transition`, { to }),
@@ -39,7 +77,8 @@ export function OrderDetailPage(): JSX.Element {
   if (query.isLoading) return <div className="p-8 text-slate-500">Loading…</div>;
   if (query.isError)   return <div className="p-8 text-red-600">{query.error instanceof ApiError ? query.error.message : 'Error'}</div>;
   const order = query.data!;
-  const next = NEXT_STATE_HINT[order.state];
+  const action = nextAction(order);
+  const canCancel = !['CANCELLED', 'REFUNDED', 'CLOSED', 'DELIVERED'].includes(order.state);
 
   return (
     <div className="p-6 max-w-5xl space-y-6">
@@ -47,27 +86,57 @@ export function OrderDetailPage(): JSX.Element {
         <ArrowLeft className="h-4 w-4" /> All orders
       </Link>
 
-      <header className="flex items-end justify-between">
+      <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{order.orderNumber}</h1>
-          <p className="text-sm text-slate-500">{order.channel.toUpperCase()} · {order.type} · {fmtDate(order.createdAt)}</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">{order.orderNumber}</h1>
+            <span className={`badge ${stateBadge[order.state] ?? ''}`}>{order.state}</span>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">{order.channel.toUpperCase()} · {order.type} · {fmtDate(order.createdAt)}</p>
         </div>
         <div className="flex items-center gap-2">
-          {next && (
-            <button className="btn-primary" disabled={transition.isPending} onClick={() => transition.mutate(next)}>
-              <RotateCcw className="h-4 w-4" /> Advance → {next}
+          {action && (
+            <button
+              className="btn-primary"
+              disabled={transition.isPending}
+              onClick={() => transition.mutate(action.to)}
+              title={`Transitions order to ${action.to}`}
+            >
+              <action.icon className="h-4 w-4" />
+              {transition.isPending ? 'Working…' : action.label}
             </button>
           )}
-          {!['CANCELLED', 'REFUNDED', 'CLOSED', 'DELIVERED'].includes(order.state) && (
-            <button className="btn-danger" disabled={cancel.isPending} onClick={() => {
-              const r = window.prompt('Cancellation reason?');
-              if (r) cancel.mutate(r);
-            }}>
+          {canCancel && (
+            <button
+              className="btn-danger"
+              disabled={cancel.isPending}
+              onClick={() => {
+                const r = window.prompt('Cancellation reason?');
+                if (r) cancel.mutate(r);
+              }}
+            >
               <XCircle className="h-4 w-4" /> Cancel
             </button>
           )}
         </div>
       </header>
+
+      {/* Payment-pending banner for CREATED orders */}
+      {order.state === 'CREATED' && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-start gap-3">
+          <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <strong>New order awaiting acceptance.</strong> Payment status is <em>{order.paymentStatus}</em>.
+            Click <strong>Accept order</strong> to confirm and start the kitchen flow. For card orders, payment captures via the gateway webhook; for cash you can collect on pickup/delivery.
+          </div>
+        </div>
+      )}
+
+      {transition.isError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {transition.error instanceof ApiError ? transition.error.message : 'Could not advance the order'}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-6">
