@@ -50,8 +50,19 @@ export function createApp(): Express {
     }),
   );
   app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  // CORS: in dev allow any localhost:* origin + Electron's app:// scheme so
+  // POS/admin/KDS/web all "just work" regardless of which port Vite picks.
+  // In prod fall back to the strict CORS_ORIGINS allowlist from env.
   app.use(cors({
-    origin: env.corsOrigins.length > 0 ? env.corsOrigins : true,
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);                                      // tools, same-origin
+      if (env.isDev) {
+        if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
+        if (/^app:\/\//.test(origin)) return cb(null, true);                   // packaged Electron
+      }
+      if (env.corsOrigins.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS denied: ${origin}`));
+    },
     credentials: true,
     exposedHeaders: ['x-request-id', 'retry-after'],
   }));
