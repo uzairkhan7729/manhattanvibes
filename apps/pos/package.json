@@ -8,7 +8,9 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "rebuild": "electron-rebuild -f -w better-sqlite3 --module-dir ../..",
+    "postinstall": "electron-rebuild -f -w better-sqlite3 --module-dir ../.. || echo \"rebuild skipped; run 'npm run rebuild --workspace=@mv/pos' manually\""
   },
   "dependencies": {
     "@mv/shared-types": "*",
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
+    "@electron/rebuild": "^3.7.1",
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.8.0",
     "@types/react": "^18.3.12",
