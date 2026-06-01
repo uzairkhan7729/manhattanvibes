@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { io, type Socket } from 'socket.io-client';
@@ -20,13 +20,33 @@ const STEPS: Array<{ key: string; label: string; icon: string }> = [
   { key: 'DELIVERED',        label: 'Delivered',         icon: '🎉' },
 ];
 
-interface Order { _id: string; orderNumber: string; state: string; type: string; pricing: { total: number }; createdAt: string }
+const PREP_TARGET_MIN = 30;
+const PREP_TARGET_MS  = PREP_TARGET_MIN * 60 * 1000;
+
+interface Transition { from: string; to: string; ts: string }
+interface Order {
+  _id: string; orderNumber: string; state: string; type: string;
+  pricing: { total: number }; createdAt: string;
+  audit?: { transitions?: Transition[] };
+}
+
+/**
+ * Find when the order was first CONFIRMED (kitchen accepted). Falls back to
+ * createdAt if there's no transition record (e.g. seed data).
+ */
+function confirmedAtMs(order: Order): number {
+  const tr = order.audit?.transitions?.find((x) => x.to === 'CONFIRMED');
+  if (tr?.ts) return new Date(tr.ts).getTime();
+  return new Date(order.createdAt).getTime();
+}
 
 export default function TrackScreen(): JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const auth = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
+  const [now, setNow] = useState(Date.now());
   const pulse = useRef(new Animated.Value(0)).current;
+  const barAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!id || !auth.accessToken) return;
@@ -38,18 +58,22 @@ export default function TrackScreen(): JSX.Element {
     fetchOnce();
     const poll = setInterval(fetchOnce, 5_000);
 
-    // Socket.IO live updates
     let sock: Socket | null = null;
     try {
       sock = io(`${getApiBase()}/tracking`, { transports: ['websocket'], reconnection: true });
       sock.on('connect', () => sock?.emit('join', { orderId: id }));
       sock.on('order.state_changed', () => fetchOnce());
-    } catch { /* fall back to polling only */ }
+    } catch { /* fall back to polling */ }
 
     return () => { clearInterval(poll); sock?.disconnect(); };
   }, [id, auth.accessToken]);
 
-  // Pulsing animation for the in-progress step
+  // 1s ticker for the live countdown
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -58,6 +82,20 @@ export default function TrackScreen(): JSX.Element {
       ]),
     ).start();
   }, [pulse]);
+
+  // Smoothly animate the progress bar width to its computed target
+  const progress = useMemo(() => {
+    if (!order) return 0;
+    const isPostKitchen = ['READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CLOSED'].includes(order.state);
+    if (isPostKitchen) return 1;
+    if (order.state === 'CREATED' || order.state === 'CANCELLED') return 0;
+    const elapsed = now - confirmedAtMs(order);
+    return Math.max(0, Math.min(1, elapsed / PREP_TARGET_MS));
+  }, [order, now]);
+
+  useEffect(() => {
+    Animated.timing(barAnim, { toValue: progress, duration: 600, useNativeDriver: false }).start();
+  }, [progress, barAnim]);
 
   if (!order) {
     return (
@@ -70,18 +108,22 @@ export default function TrackScreen(): JSX.Element {
   const visible = order.type === 'delivery' ? STEPS : STEPS.filter((s) => s.key !== 'OUT_FOR_DELIVERY');
   const isWaiting = order.state === 'CREATED';
   const isCancelled = order.state === 'CANCELLED';
-  // CLOSED is the operational terminal state (admin closed the ticket). For
-  // delivery orders DELIVERED is the user-visible "done"; for pickup orders
-  // CLOSED happens straight after READY. Treat both as fully complete so the
-  // timeline fills out and the heading reflects it.
   const isComplete = order.state === 'CLOSED' || order.state === 'DELIVERED';
-  const currentIdx = isComplete
-    ? visible.length - 1
-    : visible.findIndex((s) => s.key === order.state);
+  const currentIdx = isComplete ? visible.length - 1 : visible.findIndex((s) => s.key === order.state);
+
+  // ETA text
+  const showEta = !isWaiting && !isCancelled && !isComplete && order.state !== 'READY';
+  const minsLeft = Math.max(0, Math.ceil((confirmedAtMs(order) + PREP_TARGET_MS - now) / 60000));
+  const etaLabel = (() => {
+    if (order.state === 'READY') return 'Ready for pickup';
+    if (order.state === 'OUT_FOR_DELIVERY') return 'On the way';
+    if (minsLeft === 0) return 'Almost ready';
+    if (minsLeft === 1) return 'Ready in ~1 min';
+    return `Ready in ~${minsLeft} min`;
+  })();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* Header gradient */}
       <LinearGradient
         colors={isCancelled ? ['#0c0a09', '#7f1d1d'] : ['#0c0a09', '#7c2d12']}
         style={styles.heroGrad}
@@ -103,7 +145,44 @@ export default function TrackScreen(): JSX.Element {
         </SafeAreaView>
       </LinearGradient>
 
-      <View style={styles.card}>
+      {/* ETA card */}
+      {showEta && (
+        <View style={styles.etaCard}>
+          <View style={styles.etaTop}>
+            <View>
+              <Text style={styles.etaEyebrow}>YOUR ORDER</Text>
+              <Text style={styles.etaLabel}>{etaLabel}</Text>
+            </View>
+            <View style={styles.etaMins}>
+              <Text style={styles.etaMinsNum}>{minsLeft}</Text>
+              <Text style={styles.etaMinsUnit}>min</Text>
+            </View>
+          </View>
+          <View style={styles.barBg}>
+            <Animated.View
+              style={[
+                styles.barFill,
+                {
+                  width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={[colors.brand[400], colors.brand[600]]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </Animated.View>
+          </View>
+          <View style={styles.barTicks}>
+            <Text style={styles.barTickText}>Confirmed</Text>
+            <Text style={styles.barTickText}>~30 min target</Text>
+          </View>
+        </View>
+      )}
+
+      <View style={[styles.card, showEta ? { marginTop: 12 } : undefined]}>
         {isWaiting && (
           <View style={styles.banner}>
             <Text style={styles.bannerText}>Restaurant hasn't accepted yet — usually takes &lt;1 min.</Text>
@@ -159,6 +238,19 @@ const styles = StyleSheet.create({
   heroInner: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
   eyebrow: { color: 'rgba(255,255,255,0.85)', fontWeight: '900', letterSpacing: 3, fontSize: 11 },
   title: { color: '#fff', fontSize: 30, fontWeight: '900', marginTop: 8, letterSpacing: -0.5 },
+
+  // ETA card
+  etaCard: { marginHorizontal: 16, marginTop: -18, backgroundColor: colors.card, borderRadius: radii.xl, padding: 18, ...shadows.card },
+  etaTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  etaEyebrow: { color: colors.brand[600], fontWeight: '900', letterSpacing: 2, fontSize: 10 },
+  etaLabel: { fontSize: 18, fontWeight: '900', color: colors.ink[900], marginTop: 4 },
+  etaMins: { alignItems: 'flex-end' },
+  etaMinsNum: { fontSize: 36, fontWeight: '900', color: colors.brand[600], lineHeight: 36 },
+  etaMinsUnit: { fontSize: 11, color: colors.ink[500], fontWeight: '700', letterSpacing: 1.5 },
+  barBg: { height: 10, borderRadius: 5, backgroundColor: colors.ink[100], overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 5, overflow: 'hidden' },
+  barTicks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  barTickText: { fontSize: 10, color: colors.ink[500], fontWeight: '700' },
 
   card: { marginHorizontal: 16, marginTop: -18, backgroundColor: colors.card, borderRadius: radii.xl, padding: 20, ...shadows.card },
   banner: { backgroundColor: '#fffbeb', borderColor: '#fde68a', borderWidth: 1, padding: 12, borderRadius: radii.md, marginBottom: 16 },

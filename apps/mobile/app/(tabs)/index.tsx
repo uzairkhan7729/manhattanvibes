@@ -16,7 +16,11 @@ import { colors, radii, shadows, type as t } from '../../src/lib/theme';
 interface Branch { _id: string; code: string; name: { en: string }; address: { city: string; district: string }; status: string }
 interface Category { _id: string; name: { en: string }; slug: string; displayOrder: number }
 interface Product { id: string; sku: string; name: { en: string }; effectivePrice: number; isAvailable: boolean; type: string; categoryId: string }
-interface MyOrder { _id: string; orderNumber: string; state: string; type: string; pricing: { total: number }; createdAt: string }
+interface MyOrder {
+  _id: string; orderNumber: string; state: string; type: string;
+  pricing: { total: number }; createdAt: string;
+  audit?: { transitions?: Array<{ from: string; to: string; ts: string }> };
+}
 
 const ACTIVE_STATES = new Set(['CREATED', 'CONFIRMED', 'PREPARING', 'BAKING', 'READY', 'OUT_FOR_DELIVERY']);
 const STATE_LABEL: Record<string, string> = {
@@ -27,6 +31,12 @@ const STATE_LABEL: Record<string, string> = {
   READY: 'Ready for pickup',
   OUT_FOR_DELIVERY: 'Out for delivery',
 };
+
+const PREP_TARGET_MS = 30 * 60 * 1000;
+function confirmedAtMs(o: MyOrder): number {
+  const tr = o.audit?.transitions?.find((x) => x.to === 'CONFIRMED');
+  return tr?.ts ? new Date(tr.ts).getTime() : new Date(o.createdAt).getTime();
+}
 
 const FEATURED_SKUS = ['PIZ-MV-CLASSIC', 'BUR-MV-DOUBLE', 'PIZ-MV-VEGGIE', 'SID-WINGS'];
 const CAT_EMOJI: Record<string, string> = { pizza: '🍕', burgers: '🍔', salads: '🥗', sides: '🍟', drinks: '🥤', desserts: '🍰' };
@@ -56,14 +66,21 @@ export default function HomeScreen(): JSX.Element {
         if (active) { setBranch(active); cart.setBranch(active._id); }
         setCategories(c.items.sort((x, y) => x.displayOrder - y.displayOrder));
         setProducts(p.items);
+        setError(null);                 // clear any prior stale failure
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to connect');
       } finally {
         setLoading(false);
       }
     })();
+    // Re-run whenever the user fixes the URL in Settings, so the banner
+    // doesn't get stuck after a successful override.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [apiBase]);
+
+  // Suppress the error banner once we actually have data — a transient first
+  // failure shouldn't keep yelling at the user when everything else works.
+  const showError = error !== null && (categories.length === 0 || products.length === 0);
 
   // Refresh my orders whenever the screen mounts AND every 15s
   useEffect(() => {
@@ -77,6 +94,15 @@ export default function HomeScreen(): JSX.Element {
     const id = setInterval(fetchMine, 15_000);
     return () => clearInterval(id);
   }, [auth.accessToken]);
+
+  // 1s ticker so the ETA progress bar advances smoothly
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const activeOrders = myOrders.filter((o) => ACTIVE_STATES.has(o.state));
 
   const featured = FEATURED_SKUS.map((sku) => products.find((p) => p.sku === sku)).filter(Boolean) as Product[];
 
@@ -120,70 +146,70 @@ export default function HomeScreen(): JSX.Element {
           </SafeAreaView>
         </View>
 
-        {/* Active orders strip */}
-        {myOrders.filter((o) => ACTIVE_STATES.has(o.state)).length > 0 && (
+        {/* Active orders — only thing shown on Home. Recent goes in Profile. */}
+        {activeOrders.length > 0 && (
           <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
             <Text style={styles.eyebrow}>LIVE</Text>
             <Text style={t.h2}>Your active orders</Text>
             <View style={{ marginTop: 12, gap: 10 }}>
-              {myOrders.filter((o) => ACTIVE_STATES.has(o.state)).map((o) => (
-                <Pressable
-                  key={o._id}
-                  onPress={() => router.push(`/track/${o._id}`)}
-                  style={styles.activeCard}
-                >
-                  <View style={styles.activeDot} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.activeNum}>{o.orderNumber}</Text>
-                    <Text style={styles.activeState}>{STATE_LABEL[o.state] ?? o.state}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.activeTotal}>{fmtSAR(o.pricing.total)}</Text>
-                    <Text style={styles.activeCta}>Track  →</Text>
-                  </View>
-                </Pressable>
-              ))}
+              {activeOrders.map((o) => {
+                const isPostKitchen = ['READY', 'OUT_FOR_DELIVERY'].includes(o.state);
+                const isWaiting = o.state === 'CREATED';
+                const elapsed = now - confirmedAtMs(o);
+                const progress = isPostKitchen ? 1 : isWaiting ? 0 : Math.max(0, Math.min(1, elapsed / PREP_TARGET_MS));
+                const minsLeft = Math.max(0, Math.ceil((confirmedAtMs(o) + PREP_TARGET_MS - now) / 60000));
+                const etaText =
+                  o.state === 'READY' ? 'Ready for pickup' :
+                  o.state === 'OUT_FOR_DELIVERY' ? 'On the way' :
+                  isWaiting ? 'Awaiting confirmation' :
+                  minsLeft === 0 ? 'Almost ready' :
+                  minsLeft === 1 ? '~1 min' :
+                  `~${minsLeft} min`;
+
+                return (
+                  <Pressable
+                    key={o._id}
+                    onPress={() => router.push(`/track/${o._id}`)}
+                    style={styles.activeCard}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={styles.activeDot} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.activeNum}>{o.orderNumber}</Text>
+                        <Text style={styles.activeState}>{STATE_LABEL[o.state] ?? o.state}</Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.activeTotal}>{fmtSAR(o.pricing.total)}</Text>
+                        <Text style={styles.activeCta}>Track  →</Text>
+                      </View>
+                    </View>
+
+                    {/* progress bar */}
+                    <View style={styles.barRow}>
+                      <View style={styles.barBg}>
+                        <View style={[styles.barFill, { width: `${Math.round(progress * 100)}%` }]} />
+                      </View>
+                      <Text style={styles.barEta}>{etaText}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         )}
 
-        {/* Recent orders (past) */}
-        {auth.accessToken && myOrders.filter((o) => !ACTIVE_STATES.has(o.state)).length > 0 && (
-          <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Text style={t.h2}>Recent orders</Text>
-              <Pressable onPress={() => router.push('/profile')}>
-                <Text style={{ color: colors.brand[600], fontWeight: '700', fontSize: 13 }}>See all</Text>
-              </Pressable>
-            </View>
-            <View style={{ marginTop: 12, gap: 8 }}>
-              {myOrders.filter((o) => !ACTIVE_STATES.has(o.state)).slice(0, 3).map((o) => (
-                <Pressable
-                  key={o._id}
-                  onPress={() => router.push(`/track/${o._id}`)}
-                  style={styles.recentCard}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.activeNum}>{o.orderNumber}</Text>
-                    <Text style={styles.recentDate}>
-                      {new Date(o.createdAt).toLocaleDateString()} · {o.state.toLowerCase().replace(/_/g, ' ')}
-                    </Text>
-                  </View>
-                  <Text style={styles.activeTotal}>{fmtSAR(o.pricing.total)}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {error && (
+        {showError && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorTitle}>Couldn't reach the kitchen</Text>
-            <Text style={styles.errorBody}>{error}</Text>
             <Text style={styles.errorHint}>API base: <Text style={{ fontFamily: 'monospace' }}>{apiBase}</Text></Text>
-            <Text style={styles.errorHint}>Make sure your phone and dev laptop are on the same Wi-Fi network.</Text>
+            <Text style={styles.errorBody}>{error}</Text>
+            <Text style={[styles.errorHint, { marginTop: 8, fontWeight: '700' }]}>Likely fixes (try in order):</Text>
+            <Text style={styles.errorStep}>1. Phone &amp; laptop on the SAME Wi-Fi.</Text>
+            <Text style={styles.errorStep}>2. API is running on the laptop.</Text>
+            <Text style={styles.errorStep}>3. Windows Firewall allows TCP 8088 inbound for node.exe.</Text>
+            <Text style={styles.errorStep}>4. Last resort: <Text style={{ fontFamily: 'monospace' }}>npx expo start --tunnel</Text></Text>
             <Pressable style={styles.errorBtn} onPress={() => router.push('/settings')}>
-              <Text style={styles.errorBtnText}>Open debug / settings  →</Text>
+              <Text style={styles.errorBtnText}>Open debug · ping API · override URL  →</Text>
             </Pressable>
           </View>
         )}
@@ -306,20 +332,22 @@ const styles = StyleSheet.create({
   heroCta: { backgroundColor: colors.brand[500], alignSelf: 'flex-start', marginTop: 18, paddingVertical: 14, paddingHorizontal: 26, borderRadius: radii.pill, ...shadows.glow },
   heroCtaText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 
-  activeCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: colors.brand[50], borderRadius: radii.lg, borderColor: colors.brand[200], borderWidth: 1 },
+  activeCard: { padding: 14, backgroundColor: colors.brand[50], borderRadius: radii.lg, borderColor: colors.brand[200], borderWidth: 1 },
   activeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand[500], ...shadows.glow },
   activeNum: { fontSize: 15, fontWeight: '900', color: colors.ink[900] },
   activeState: { fontSize: 12, color: colors.brand[700], marginTop: 2, fontWeight: '600' },
   activeTotal: { fontWeight: '900', color: colors.ink[900], fontSize: 15 },
   activeCta: { color: colors.brand[600], fontWeight: '800', fontSize: 11, marginTop: 2 },
-
-  recentCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: colors.card, borderRadius: radii.lg, ...shadows.card },
-  recentDate: { fontSize: 11, color: colors.ink[500], marginTop: 2 },
+  barRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  barBg: { flex: 1, height: 6, borderRadius: 3, backgroundColor: 'rgba(154, 52, 18, 0.15)', overflow: 'hidden' },
+  barFill: { height: '100%', backgroundColor: colors.brand[500], borderRadius: 3 },
+  barEta: { fontSize: 11, color: colors.brand[700], fontWeight: '800', minWidth: 64, textAlign: 'right' },
 
   errorBanner: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, margin: 16, padding: 14, borderRadius: radii.lg },
   errorTitle: { color: '#991b1b', fontWeight: '800', fontSize: 14 },
   errorBody: { color: '#7f1d1d', fontSize: 12, marginTop: 4, fontFamily: 'monospace' },
   errorHint: { color: '#7f1d1d', fontSize: 11, marginTop: 6 },
+  errorStep: { color: '#7f1d1d', fontSize: 11, marginTop: 3, paddingLeft: 4 },
   errorBtn: { backgroundColor: '#991b1b', alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.pill, marginTop: 10 },
   errorBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
 
