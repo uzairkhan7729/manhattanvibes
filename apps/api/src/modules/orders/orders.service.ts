@@ -319,7 +319,8 @@ export async function listOrders(tenantId: string, opts: { branchId?: string; st
 function emitOrderEvent(event: string, order: OrderDoc, extra: Record<string, unknown> = {}): void {
   try {
     const io = getIO();
-    const payload = {
+    // Slim payload — enough for /admin notifications and /tracking steppers.
+    const slim = {
       id: order._id.toString(),
       orderNumber: order.orderNumber,
       branchId: order.branchId.toString(),
@@ -328,10 +329,46 @@ function emitOrderEvent(event: string, order: OrderDoc, extra: Record<string, un
       total: order.pricing?.total,
       ...extra,
     };
-    io.of('/kds').to(`branch:${order.branchId.toString()}:kitchen`).emit(event, payload);
-    io.of('/admin').to(`branch:${order.branchId.toString()}:admin`).emit(event, payload);
-    io.of('/tracking').to(`order:${order._id.toString()}`).emit(event, payload);
-  } catch {
-    // Socket.IO not initialised (e.g. unit tests) — silently skip.
+    // /kds needs items + createdAt so it can render the order card without
+    // an extra HTTP fetch (the fetch silently failed on stale tokens before).
+    // Convert Mongoose subdocs to plain values via toJSON, otherwise circular
+    // refs from `productSnapshot` blow up downstream consumers.
+    interface ItemLike {
+      qty: number;
+      productSnapshot?: { name?: { en?: string; ar?: string } | null; sku?: string | null } | null;
+      sizeCode?: string | null;
+      crustCode?: string | null;
+      notes?: string | null;
+    }
+    const flatItems = ((order.items ?? []) as unknown as Array<ItemLike & { toJSON?: () => ItemLike }>).map((it) => {
+      const plain: ItemLike = typeof it.toJSON === 'function' ? it.toJSON() : it;
+      return {
+        qty: plain.qty,
+        productSnapshot: plain.productSnapshot
+          ? { name: plain.productSnapshot.name ?? { en: '' }, sku: plain.productSnapshot.sku ?? '' }
+          : undefined,
+        sizeCode: plain.sizeCode ?? undefined,
+        crustCode: plain.crustCode ?? undefined,
+        notes: plain.notes ?? undefined,
+      };
+    });
+    const kds = {
+      ...slim,
+      createdAt: ((): string | undefined => {
+        const v = (order as { createdAt?: Date | string }).createdAt;
+        if (!v) return undefined;
+        if (v instanceof Date) return v.toISOString();
+        return String(v);
+      })(),
+      items: flatItems,
+    };
+    io.of('/kds').to(`branch:${order.branchId.toString()}:kitchen`).emit(event, kds);
+    io.of('/admin').to(`branch:${order.branchId.toString()}:admin`).emit(event, slim);
+    io.of('/tracking').to(`order:${order._id.toString()}`).emit(event, slim);
+  } catch (err: unknown) {
+    // Don't let emission ever crash the request — orders + payments are the
+    // canonical state, sockets are a nice-to-have. Surface for diagnostics.
+    // eslint-disable-next-line no-console
+    console.warn('[emitOrderEvent] failed:', err instanceof Error ? err.message : err);
   }
 }

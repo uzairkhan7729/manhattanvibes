@@ -1,6 +1,9 @@
-import type { ExpoConfig } from 'expo/config';
+// Plain JS so Expo's config evaluator can require() it without a TS
+// transpile step (npx-resolved expo doesn't always have ts-node available
+// before deps are installed).
 
-const config: ExpoConfig = {
+/** @type {import('@expo/config-types').ExpoConfig} */
+module.exports = {
   name: 'Manhattan Vibes',
   slug: 'manhattan-vibes',
   scheme: 'manhattanvibes',
@@ -19,8 +22,6 @@ const config: ExpoConfig = {
   plugins: ['expo-router'],
   experiments: { typedRoutes: true },
   extra: {
-    apiBase: process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:8088',
+    apiBase: process.env.EXPO_PUBLIC_API_BASE || 'http://localhost:8088',
   },
 };
-
-export default config;

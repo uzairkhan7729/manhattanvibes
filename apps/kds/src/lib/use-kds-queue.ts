@@ -31,9 +31,39 @@ const stateBucket: Record<string, keyof Buckets | null> = {
   CANCELLED: null,
 };
 
+/** Shape of an order event payload from the server's /kds namespace. */
+interface KdsEvent {
+  id: string;
+  orderNumber: string;
+  state: string;
+  type?: string;
+  total?: number;
+  createdAt?: string;
+  items?: KdsOrder['items'];
+  from?: string;
+  to?: string;
+}
+
+function fromEvent(msg: KdsEvent): KdsOrder | null {
+  if (!msg.type || !msg.createdAt || !msg.items) return null;
+  return {
+    _id: msg.id,
+    orderNumber: msg.orderNumber,
+    state: msg.state,
+    type: msg.type,
+    pricing: typeof msg.total === 'number' ? { total: msg.total } : undefined,
+    items: msg.items,
+    createdAt: msg.createdAt,
+  };
+}
+
 /**
  * Maintains the live kitchen queue. Initial state via REST; updates via Socket.IO.
- * On `state_changed`, the order is moved between buckets (or removed if terminal).
+ *
+ * Transitions:
+ *   - non-KDS state -> KDS state : add from event payload (no HTTP fetch)
+ *   - KDS state -> KDS state     : move between buckets, keep existing copy
+ *   - KDS state -> non-KDS state : remove from buckets
  */
 export function useKdsQueue(branchId: string, accessToken: string): {
   queue: Buckets;
@@ -71,35 +101,43 @@ export function useKdsQueue(branchId: string, accessToken: string): {
     });
     sock.on('disconnect', () => setConnected(false));
 
-    const onChanged = (msg: { id: string; orderNumber: string; state: string; from?: string; to?: string }): void => {
-      const fromKey = msg.from ? stateBucket[msg.from] : null;
-      const toKey = stateBucket[msg.state];
+    const onChanged = (msg: KdsEvent): void => {
+      const toKey = stateBucket[msg.state] ?? null;
 
       setQueue((q) => {
-        // Find existing order across buckets
+        // Find + remove from any current bucket
         let found: KdsOrder | undefined;
-        const next: Buckets = { incoming: [...q.incoming], preparing: [...q.preparing], baking: [...q.baking], ready: [...q.ready] };
+        const next: Buckets = {
+          incoming: [...q.incoming],
+          preparing: [...q.preparing],
+          baking: [...q.baking],
+          ready: [...q.ready],
+        };
         for (const k of Object.keys(next) as Array<keyof Buckets>) {
           const idx = next[k].findIndex((o) => o._id === msg.id);
-          if (idx >= 0) {
-            [found] = next[k].splice(idx, 1);
-          }
+          if (idx >= 0) [found] = next[k].splice(idx, 1);
         }
-        if (toKey && found) {
+
+        if (toKey === null) {
+          // Terminal / non-KDS state — already removed above, nothing more to do.
+          return next;
+        }
+
+        if (found) {
+          // Already had it; move with updated state.
           next[toKey] = [{ ...found, state: msg.state }, ...next[toKey]];
+        } else {
+          // Order is entering a KDS bucket for the first time (e.g. CREATED -> CONFIRMED).
+          // Build the card from the event payload — no HTTP fetch needed.
+          const fresh = fromEvent(msg);
+          if (fresh) next[toKey] = [fresh, ...next[toKey]];
         }
         return next;
       });
     };
 
-    sock.on('order.created',      onChanged);
-    sock.on('order.confirmed',    (msg: { id: string; orderNumber: string; state: string }) => {
-      // New confirmed order — pull full doc and place in incoming
-      fetch(`/api/v1/orders/${msg.id}`, { headers: { authorization: `Bearer ${accessToken}` } })
-        .then((r) => r.json())
-        .then((doc: KdsOrder) => setQueue((q) => ({ ...q, incoming: [doc, ...q.incoming.filter((o) => o._id !== doc._id)] })))
-        .catch(() => undefined);
-    });
+    sock.on('order.created',       onChanged);
+    sock.on('order.confirmed',     onChanged);   // payload now carries items + createdAt
     sock.on('order.state_changed', onChanged);
     sock.on('order.ready',         onChanged);
     sock.on('order.cancelled',     onChanged);
