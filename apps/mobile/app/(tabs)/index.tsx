@@ -6,6 +6,7 @@ import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth';
 import { useCart } from '../../src/lib/cart';
 import { useApiBase } from '../../src/lib/config';
 import { fmtSAR } from '../../src/lib/format';
@@ -15,6 +16,17 @@ import { colors, radii, shadows, type as t } from '../../src/lib/theme';
 interface Branch { _id: string; code: string; name: { en: string }; address: { city: string; district: string }; status: string }
 interface Category { _id: string; name: { en: string }; slug: string; displayOrder: number }
 interface Product { id: string; sku: string; name: { en: string }; effectivePrice: number; isAvailable: boolean; type: string; categoryId: string }
+interface MyOrder { _id: string; orderNumber: string; state: string; type: string; pricing: { total: number }; createdAt: string }
+
+const ACTIVE_STATES = new Set(['CREATED', 'CONFIRMED', 'PREPARING', 'BAKING', 'READY', 'OUT_FOR_DELIVERY']);
+const STATE_LABEL: Record<string, string> = {
+  CREATED: 'Waiting for kitchen',
+  CONFIRMED: 'Accepted — preparing soon',
+  PREPARING: 'Preparing',
+  BAKING: 'Baking',
+  READY: 'Ready for pickup',
+  OUT_FOR_DELIVERY: 'Out for delivery',
+};
 
 const FEATURED_SKUS = ['PIZ-MV-CLASSIC', 'BUR-MV-DOUBLE', 'PIZ-MV-VEGGIE', 'SID-WINGS'];
 const CAT_EMOJI: Record<string, string> = { pizza: '🍕', burgers: '🍔', salads: '🥗', sides: '🍟', drinks: '🥤', desserts: '🍰' };
@@ -23,10 +35,12 @@ const W = Dimensions.get('window').width;
 export default function HomeScreen(): JSX.Element {
   const router = useRouter();
   const cart = useCart();
+  const auth = useAuth();
   const apiBase = useApiBase();
   const [branch, setBranch] = useState<Branch | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [myOrders, setMyOrders] = useState<MyOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +64,19 @@ export default function HomeScreen(): JSX.Element {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Refresh my orders whenever the screen mounts AND every 15s
+  useEffect(() => {
+    if (!auth.accessToken) { setMyOrders([]); return; }
+    const fetchMine = (): void => {
+      api.get<{ items: MyOrder[] }>(`/orders?limit=10`, { authorization: `Bearer ${auth.accessToken!}` })
+        .then((r) => setMyOrders(r.items))
+        .catch(() => undefined);
+    };
+    fetchMine();
+    const id = setInterval(fetchMine, 15_000);
+    return () => clearInterval(id);
+  }, [auth.accessToken]);
 
   const featured = FEATURED_SKUS.map((sku) => products.find((p) => p.sku === sku)).filter(Boolean) as Product[];
 
@@ -92,6 +119,62 @@ export default function HomeScreen(): JSX.Element {
             </View>
           </SafeAreaView>
         </View>
+
+        {/* Active orders strip */}
+        {myOrders.filter((o) => ACTIVE_STATES.has(o.state)).length > 0 && (
+          <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+            <Text style={styles.eyebrow}>LIVE</Text>
+            <Text style={t.h2}>Your active orders</Text>
+            <View style={{ marginTop: 12, gap: 10 }}>
+              {myOrders.filter((o) => ACTIVE_STATES.has(o.state)).map((o) => (
+                <Pressable
+                  key={o._id}
+                  onPress={() => router.push(`/track/${o._id}`)}
+                  style={styles.activeCard}
+                >
+                  <View style={styles.activeDot} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.activeNum}>{o.orderNumber}</Text>
+                    <Text style={styles.activeState}>{STATE_LABEL[o.state] ?? o.state}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.activeTotal}>{fmtSAR(o.pricing.total)}</Text>
+                    <Text style={styles.activeCta}>Track  →</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Recent orders (past) */}
+        {auth.accessToken && myOrders.filter((o) => !ACTIVE_STATES.has(o.state)).length > 0 && (
+          <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <Text style={t.h2}>Recent orders</Text>
+              <Pressable onPress={() => router.push('/profile')}>
+                <Text style={{ color: colors.brand[600], fontWeight: '700', fontSize: 13 }}>See all</Text>
+              </Pressable>
+            </View>
+            <View style={{ marginTop: 12, gap: 8 }}>
+              {myOrders.filter((o) => !ACTIVE_STATES.has(o.state)).slice(0, 3).map((o) => (
+                <Pressable
+                  key={o._id}
+                  onPress={() => router.push(`/track/${o._id}`)}
+                  style={styles.recentCard}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.activeNum}>{o.orderNumber}</Text>
+                    <Text style={styles.recentDate}>
+                      {new Date(o.createdAt).toLocaleDateString()} · {o.state.toLowerCase().replace(/_/g, ' ')}
+                    </Text>
+                  </View>
+                  <Text style={styles.activeTotal}>{fmtSAR(o.pricing.total)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
 
         {error && (
           <View style={styles.errorBanner}>
@@ -222,6 +305,16 @@ const styles = StyleSheet.create({
   heroTitle: { color: '#fff', fontSize: 36, fontWeight: '900', letterSpacing: -1, lineHeight: 38 },
   heroCta: { backgroundColor: colors.brand[500], alignSelf: 'flex-start', marginTop: 18, paddingVertical: 14, paddingHorizontal: 26, borderRadius: radii.pill, ...shadows.glow },
   heroCtaText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+
+  activeCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: colors.brand[50], borderRadius: radii.lg, borderColor: colors.brand[200], borderWidth: 1 },
+  activeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand[500], ...shadows.glow },
+  activeNum: { fontSize: 15, fontWeight: '900', color: colors.ink[900] },
+  activeState: { fontSize: 12, color: colors.brand[700], marginTop: 2, fontWeight: '600' },
+  activeTotal: { fontWeight: '900', color: colors.ink[900], fontSize: 15 },
+  activeCta: { color: colors.brand[600], fontWeight: '800', fontSize: 11, marginTop: 2 },
+
+  recentCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: colors.card, borderRadius: radii.lg, ...shadows.card },
+  recentDate: { fontSize: 11, color: colors.ink[500], marginTop: 2 },
 
   errorBanner: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, margin: 16, padding: 14, borderRadius: radii.lg },
   errorTitle: { color: '#991b1b', fontWeight: '800', fontSize: 14 },

@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { objectIdSchema } from '@mv/validators';
 
 import { optionalAuth, requireAuth } from '../../middleware/auth.middleware.js';
-import { requirePermission } from '../../middleware/rbac.middleware.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
 
 import * as svc from './orders.service.js';
@@ -53,7 +52,7 @@ ordersRouter.post('/', optionalAuth, asyncHandler(async (req: Request, res: Resp
   res.status(201).json(order);
 }));
 
-ordersRouter.get('/', requireAuth, requirePermission('orders:read'),
+ordersRouter.get('/', requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
     const q = z.object({
       branchId: objectIdSchema.optional(),
@@ -63,12 +62,19 @@ ordersRouter.get('/', requireAuth, requirePermission('orders:read'),
       customerId: objectIdSchema.optional(),
       limit: z.coerce.number().int().min(1).max(500).optional(),
     }).parse(req.query);
+
+    // Customers can only see their OWN orders — force the filter regardless
+    // of what's in the query. Staff (any non-Customer role) can filter freely.
+    const customerId = req.auth?.role === 'Customer'
+      ? req.auth.userId
+      : q.customerId;
+
     const items = await svc.listOrders(req.tenantId, {
       branchId: q.branchId,
       state: q.state as OrderState | undefined,
       from: q.from ? new Date(q.from) : undefined,
       to: q.to ? new Date(q.to) : undefined,
-      customerId: q.customerId,
+      customerId,
       limit: q.limit,
     });
     res.json({ items });
@@ -77,7 +83,15 @@ ordersRouter.get('/', requireAuth, requirePermission('orders:read'),
 ordersRouter.get('/:id', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   // Accepts ObjectId OR human-friendly orderNumber (e.g. "RUH-1-00001").
   const id = z.string().min(1).parse(req.params.id);
-  res.json(await svc.getOrder(req.tenantId, id));
+  const order = await svc.getOrder(req.tenantId, id);
+  // Customers may only fetch their own orders by id. Staff can see any.
+  if (req.auth?.role === 'Customer' && order.customerId?.toString() !== req.auth.userId) {
+    res.status(404).type('application/problem+json').json({
+      type: '/errors/not-found', title: 'Not Found', status: 404, instance: req.originalUrl,
+    });
+    return;
+  }
+  res.json(order);
 }));
 
 ordersRouter.patch('/:id', requireAuth, asyncHandler(async (req: Request, res: Response) => {

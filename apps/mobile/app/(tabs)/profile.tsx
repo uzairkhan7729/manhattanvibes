@@ -95,10 +95,7 @@ export default function ProfileScreen(): JSX.Element {
           );
         })}
 
-        <Pressable onPress={() => router.push('/settings')} style={[styles.cta, { backgroundColor: colors.bg, marginTop: 32, borderColor: colors.border, borderWidth: 1, ...shadows.card }]}>
-          <Text style={[styles.ctaText, { color: colors.ink[700] }]}>⚙  Debug · Settings</Text>
-        </Pressable>
-        <Pressable onPress={() => auth.clear()} style={[styles.cta, { backgroundColor: '#fef2f2', marginTop: 12 }]}>
+        <Pressable onPress={() => auth.clear()} style={[styles.cta, { backgroundColor: '#fef2f2', marginTop: 32 }]}>
           <Text style={[styles.ctaText, { color: '#991b1b' }]}>Sign out</Text>
         </Pressable>
       </ScrollView>
