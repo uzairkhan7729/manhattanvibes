@@ -7,7 +7,7 @@ import { io, type Socket } from 'socket.io-client';
 
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth';
-import { API_BASE } from '../../src/lib/config';
+import { getApiBase } from '../../src/lib/config';
 import { fmtSAR } from '../../src/lib/format';
 import { colors, radii, shadows, type as t } from '../../src/lib/theme';
 
@@ -41,7 +41,7 @@ export default function TrackScreen(): JSX.Element {
     // Socket.IO live updates
     let sock: Socket | null = null;
     try {
-      sock = io(`${API_BASE}/tracking`, { transports: ['websocket'], reconnection: true });
+      sock = io(`${getApiBase()}/tracking`, { transports: ['websocket'], reconnection: true });
       sock.on('connect', () => sock?.emit('join', { orderId: id }));
       sock.on('order.state_changed', () => fetchOnce());
     } catch { /* fall back to polling only */ }

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../src/lib/api';
 import { useCart } from '../../src/lib/cart';
+import { useApiBase } from '../../src/lib/config';
 import { fmtSAR } from '../../src/lib/format';
 import { HERO, productImage } from '../../src/lib/images';
 import { colors, radii, shadows, type as t } from '../../src/lib/theme';
@@ -22,6 +23,7 @@ const W = Dimensions.get('window').width;
 export default function HomeScreen(): JSX.Element {
   const router = useRouter();
   const cart = useCart();
+  const apiBase = useApiBase();
   const [branch, setBranch] = useState<Branch | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -95,7 +97,11 @@ export default function HomeScreen(): JSX.Element {
           <View style={styles.errorBanner}>
             <Text style={styles.errorTitle}>Couldn't reach the kitchen</Text>
             <Text style={styles.errorBody}>{error}</Text>
+            <Text style={styles.errorHint}>API base: <Text style={{ fontFamily: 'monospace' }}>{apiBase}</Text></Text>
             <Text style={styles.errorHint}>Make sure your phone and dev laptop are on the same Wi-Fi network.</Text>
+            <Pressable style={styles.errorBtn} onPress={() => router.push('/settings')}>
+              <Text style={styles.errorBtnText}>Open debug / settings  →</Text>
+            </Pressable>
           </View>
         )}
 
@@ -221,6 +227,8 @@ const styles = StyleSheet.create({
   errorTitle: { color: '#991b1b', fontWeight: '800', fontSize: 14 },
   errorBody: { color: '#7f1d1d', fontSize: 12, marginTop: 4, fontFamily: 'monospace' },
   errorHint: { color: '#7f1d1d', fontSize: 11, marginTop: 6 },
+  errorBtn: { backgroundColor: '#991b1b', alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.pill, marginTop: 10 },
+  errorBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
 
   eyebrow: { color: colors.brand[600], fontWeight: '900', letterSpacing: 2, fontSize: 10, marginBottom: 4 },
 

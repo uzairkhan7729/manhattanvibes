@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Splash } from '../src/components/Splash';
+import { loadApiBaseOverride } from '../src/lib/config';
 import { colors } from '../src/lib/theme';
 
 // Keep the native splash up until our React-rendered splash takes over.
@@ -16,6 +17,7 @@ export default function RootLayout(): JSX.Element {
   const [splashHidden, setSplashHidden] = useState(false);
 
   useEffect(() => {
+    void loadApiBaseOverride();                            // apply persisted URL override before any fetch
     const t = setTimeout(() => setAppReady(true), 1500);   // brand moment
     SplashScreen.hideAsync().catch(() => undefined);
     return () => clearTimeout(t);
@@ -37,6 +39,7 @@ export default function RootLayout(): JSX.Element {
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'modal' }} />
           <Stack.Screen name="auth/phone" options={{ title: 'Sign in' }} />
           <Stack.Screen name="auth/otp" options={{ title: 'Verify' }} />
           <Stack.Screen name="checkout" options={{ title: 'Checkout' }} />
