@@ -40,6 +40,8 @@ export default function RootLayout(): JSX.Element {
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'modal' }} />
+          <Stack.Screen name="orders" options={{ title: 'My orders' }} />
+          <Stack.Screen name="auth/signup" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="auth/phone" options={{ title: 'Sign in' }} />
           <Stack.Screen name="auth/otp" options={{ title: 'Verify' }} />
           <Stack.Screen name="checkout" options={{ title: 'Checkout' }} />
