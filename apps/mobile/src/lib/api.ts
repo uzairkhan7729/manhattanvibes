@@ -4,8 +4,9 @@ import { getApiBase } from './config';
 export class ApiError extends Error {
   status: number;
   code: string;
-  constructor(status: number, code: string, message: string) {
-    super(message); this.status = status; this.code = code;
+  fields?: Record<string, string>;
+  constructor(status: number, code: string, message: string, fields?: Record<string, string>) {
+    super(message); this.status = status; this.code = code; this.fields = fields;
   }
 }
 
@@ -117,8 +118,10 @@ async function request<T>(method: string, path: string, body?: unknown, headers?
 
   const parsed: unknown = text ? (() => { try { return JSON.parse(text) as unknown; } catch { return text; } })() : null;
   if (!r.ok) {
-    const p = parsed as { code?: string; detail?: string; title?: string } | string | null;
-    if (p && typeof p === 'object') throw new ApiError(r.status, p.code ?? 'error', p.detail ?? p.title ?? `HTTP ${r.status}`);
+    const p = parsed as { code?: string; detail?: string; title?: string; fields?: Record<string, string> } | string | null;
+    if (p && typeof p === 'object') {
+      throw new ApiError(r.status, p.code ?? 'error', p.detail ?? p.title ?? `HTTP ${r.status}`, p.fields);
+    }
     throw new ApiError(r.status, 'error', `HTTP ${r.status}`);
   }
   return parsed as T;

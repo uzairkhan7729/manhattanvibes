@@ -38,6 +38,18 @@ export default function CheckoutScreen(): JSX.Element {
   async function place(): Promise<void> {
     setBusy(true); setError(null);
     try {
+      // Recover branchId if home never loaded it (e.g. user fixed API URL
+      // mid-flow and went straight to menu without revisiting home).
+      let branchId = cart.branchId;
+      if (!branchId) {
+        const r = await api.get<{ items: Array<{ _id: string; status: string }> }>('/branches');
+        const active = r.items.find((b) => b.status === 'active') ?? r.items[0];
+        if (!active) throw new Error('No active branch found.');
+        cart.setBranch(active._id);
+        branchId = active._id;
+      }
+      if (cart.lines.length === 0) throw new Error('Your cart is empty.');
+
       let token = auth.accessToken;
       let userId = auth.userId;
 
@@ -56,7 +68,7 @@ export default function CheckoutScreen(): JSX.Element {
       const order = await api.post<{ _id: string; pricing: { total: number } }>(
         '/orders',
         {
-          branchId: cart.branchId,
+          branchId,
           channel: 'mobile',
           type,
           items: cart.lines.map((l) => ({ productId: l.productId, qty: l.qty, sizeCode: l.sizeCode, crustCode: l.crustCode, toppingIds: l.toppingIds, sauceIds: l.sauceIds })),
@@ -72,7 +84,14 @@ export default function CheckoutScreen(): JSX.Element {
       router.replace(`/track/${order._id}`);
     } catch (err) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError(err instanceof ApiError ? err.message : 'Could not place order');
+      if (err instanceof ApiError) {
+        const fieldMsgs = err.fields
+          ? Object.entries(err.fields).map(([k, v]) => `${k}: ${v}`).join('\n')
+          : '';
+        setError(fieldMsgs ? `${err.message}\n\n${fieldMsgs}` : err.message);
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not place order');
+      }
     } finally {
       setBusy(false);
     }
