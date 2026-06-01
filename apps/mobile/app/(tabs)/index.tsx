@@ -247,7 +247,7 @@ export default function HomeScreen(): JSX.Element {
             />
             <View style={styles.offerContent}>
               <Text style={styles.offerBadge}>FAMILY FEAST</Text>
-              <Text style={styles.offerTitle}>2 Pizzas + sides{'\n'}79 SAR</Text>
+              <Text style={styles.offerTitle}>2 Pizzas + sides{'\n'}Rs 2,400</Text>
               <Text style={styles.offerCta}>Order now  →</Text>
             </View>
           </Pressable>
@@ -302,7 +302,7 @@ export default function HomeScreen(): JSX.Element {
           <View style={styles.whyItem}>
             <Text style={{ fontSize: 22 }}>🚀</Text>
             <Text style={styles.whyTitle}>Free</Text>
-            <Text style={styles.whySub}>delivery &gt;75 SAR</Text>
+            <Text style={styles.whySub}>delivery &gt;Rs 2,000</Text>
           </View>
           <View style={styles.whyItem}>
             <Text style={{ fontSize: 22 }}>⭐</Text>

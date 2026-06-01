@@ -38,9 +38,9 @@ export async function createIntent(tenantId: string, input: CreateIntentInput): 
   const gw = selectGateway(input.method);
   const intent = await gw.createIntent({
     amount,
-    currency: 'SAR',
+    currency: 'PKR',
     orderRef: order.orderNumber,
-    returnUrl: input.returnUrl ?? 'https://manhattanvibes.sa/return',
+    returnUrl: input.returnUrl ?? 'https://manhattanvibes.pk/return',
   });
 
   const payment = await PaymentModel.create({
@@ -49,7 +49,7 @@ export async function createIntent(tenantId: string, input: CreateIntentInput): 
     orderId: order._id,
     method: input.method,
     amount,
-    currency: 'SAR',
+    currency: 'PKR',
     status: 'authorized',
     gateway: gw.name,
     gatewayRefs: { txnId: intent.externalId, raw: intent.raw },

@@ -103,7 +103,7 @@ export function HeroCarousel(): JSX.Element {
             className="mt-12 flex flex-wrap items-center gap-x-10 gap-y-4 text-white/90"
           >
             <Stat icon={Clock} label="Avg prep" value="<12 min" />
-            <Stat icon={Truck} label="Free delivery" value=">75 SAR" />
+            <Stat icon={Truck} label="Free delivery" value=">Rs 2,000" />
             <Stat icon={Star} label="App store" value="4.9 ★" />
           </motion.dl>
         </div>

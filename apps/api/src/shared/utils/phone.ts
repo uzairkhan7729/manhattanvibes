@@ -1,10 +1,10 @@
 /**
- * E.164 phone helpers. Phase 1 is KSA-only — we anchor on +966 and treat
- * everything else as a best-effort 4-char country-code split. When Phase 2
- * adds GCC markets we'll swap this for libphonenumber-js.
+ * E.164 phone helpers. Currently anchors on +92 (Pakistan, 3-digit dial code).
+ * Falls back to a best-effort split for other origins. When we expand markets
+ * we'll swap this for libphonenumber-js.
  */
 
-const KSA_PREFIX = '+966';
+const PK_PREFIX = '+92';
 
 export interface ParsedPhone {
   countryCode: string;
@@ -12,8 +12,8 @@ export interface ParsedPhone {
 }
 
 export function parseE164(e164: string): ParsedPhone {
-  if (e164.startsWith(KSA_PREFIX)) {
-    return { countryCode: KSA_PREFIX, number: e164.slice(KSA_PREFIX.length) };
+  if (e164.startsWith(PK_PREFIX)) {
+    return { countryCode: PK_PREFIX, number: e164.slice(PK_PREFIX.length) };
   }
   // best-effort fallback
   return { countryCode: e164.slice(0, 4), number: e164.slice(4) };

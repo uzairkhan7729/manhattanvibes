@@ -66,7 +66,7 @@ export default function AccountPage(): JSX.Element {
             <li key={o._id} className="px-5 py-3 border-b border-slate-100 last:border-0 flex items-center justify-between">
               <div>
                 <Link href={`/track/${o._id}`} className="font-medium text-brand-600 hover:underline">{o.orderNumber}</Link>
-                <div className="text-xs text-slate-500">{new Date(o.createdAt).toLocaleString('en-SA', { timeZone: 'Asia/Riyadh' })}</div>
+                <div className="text-xs text-slate-500">{new Date(o.createdAt).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</div>
               </div>
               <div className="text-right">
                 <div className="font-medium">{fmtSAR(o.pricing.total)}</div>

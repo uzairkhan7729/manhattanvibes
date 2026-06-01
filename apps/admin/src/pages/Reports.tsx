@@ -60,7 +60,7 @@ export function ReportsPage(): JSX.Element {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis />
-                <Tooltip formatter={(v: number, name) => name === 'sales' ? `${v.toFixed(2)} SAR` : v} />
+                <Tooltip formatter={(v: number, name) => name === 'sales' ? `Rs ${Math.round(v).toLocaleString('en-PK')}` : v} />
                 <Line type="monotone" dataKey="sales" stroke="#f97316" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>

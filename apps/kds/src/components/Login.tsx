@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth';
 
 export function Login({ onLogin }: { onLogin: () => void }): JSX.Element {
   const auth = useAuth();
-  const [identifier, setIdentifier] = useState('+966500000003');     // seeded cashier
+  const [identifier, setIdentifier] = useState('+923000000003');     // seeded cashier
   const [password, setPassword] = useState('ChangeMe!2026');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

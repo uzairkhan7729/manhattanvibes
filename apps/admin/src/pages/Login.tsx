@@ -6,7 +6,7 @@ import { api, ApiError } from '../lib/api';
 import { useAuthStore } from '../lib/auth-store';
 
 export function LoginPage(): JSX.Element {
-  const [identifier, setIdentifier] = useState('+966500000001');
+  const [identifier, setIdentifier] = useState('+923000000001');
   const [password, setPassword] = useState('ChangeMe!2026');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,7 +57,7 @@ export function LoginPage(): JSX.Element {
         </form>
         <p className="text-xs text-slate-500 mt-6 leading-relaxed">
           Seeded credentials:<br />
-          <code className="text-slate-700">+966500000001</code> (SuperAdmin) /
+          <code className="text-slate-700">+923000000001</code> (SuperAdmin) /
           <code className="text-slate-700"> ChangeMe!2026</code>
         </p>
       </div>

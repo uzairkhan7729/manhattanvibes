@@ -8,13 +8,13 @@ import { fmtSAR, fmtNumber } from '../lib/format';
 interface Branch { _id: string; code: string; name: { en: string; ar?: string }; status: string }
 interface DailySummary { branchId: string; date: string; summary: { orders: number; gross: number; vat: number; net: number; delivery: number; disc: number } }
 
-function todayKSA(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
+function todayLocal(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
 }
 
 export function DashboardPage(): JSX.Element {
   const branches = useQuery({ queryKey: ['branches'], queryFn: () => api.get<{ items: Branch[] }>('/branches') });
-  const today = todayKSA();
+  const today = todayLocal();
   const summaries = useQuery({
     queryKey: ['summary-today', branches.data?.items.map((b) => b._id).join(',')],
     enabled: !!branches.data,
@@ -39,7 +39,7 @@ export function DashboardPage(): JSX.Element {
     <div className="p-6 space-y-6">
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-sm text-slate-500">Today — {today} (Asia/Riyadh)</p>
+        <p className="text-sm text-slate-500">Today — {today} (Asia/Karachi)</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -58,7 +58,7 @@ export function DashboardPage(): JSX.Element {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="branch" />
                 <YAxis />
-                <Tooltip formatter={(v: number) => `${v.toFixed(2)} SAR`} />
+                <Tooltip formatter={(v: number) => `Rs ${Math.round(v).toLocaleString('en-PK')}`} />
                 <Bar dataKey="sales" fill="#f97316" />
               </BarChart>
             </ResponsiveContainer>

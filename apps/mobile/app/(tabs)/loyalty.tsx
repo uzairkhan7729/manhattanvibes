@@ -94,8 +94,8 @@ export default function LoyaltyScreen(): JSX.Element {
 
         <View style={styles.howTo}>
           <Text style={[t.h2, { marginBottom: 12 }]}>How it works</Text>
-          <Step icon="🍕" title="Order & enjoy" desc="Earn 1 point per SAR spent on every paid order." />
-          <Step icon="🎁" title="Redeem at checkout" desc="100 points = 1 SAR off. Up to 50% of your order." />
+          <Step icon="🍕" title="Order & enjoy" desc="Earn 1 point per rupee spent on every paid order." />
+          <Step icon="🎁" title="Redeem at checkout" desc="100 points = Rs 1 off. Up to 50% of your order." />
           <Step icon="🎂" title="Birthday bonus" desc="Free dessert on your birthday — auto-issued." />
           <Step icon="🤝" title="Referral bonus" desc="You and your friend each get 50 points on their first order." />
         </View>

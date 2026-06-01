@@ -5,7 +5,7 @@ import { useSession } from '../lib/auth';
 
 export function Login(): JSX.Element {
   const session = useSession();
-  const [identifier, setIdentifier] = useState('+966500000003'); // seeded Cashier
+  const [identifier, setIdentifier] = useState('+923000000003'); // seeded Cashier
   const [password, setPassword] = useState('ChangeMe!2026');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed": "tsx src/scripts/seed.ts",
-    "smoke": "tsx src/scripts/smoke.ts"
+    "smoke": "tsx src/scripts/smoke.ts",
+    "migrate-to-pkr": "tsx src/scripts/migrate-to-pkr.ts"
   },
   "dependencies": {
     "@mv/shared-types": "*",

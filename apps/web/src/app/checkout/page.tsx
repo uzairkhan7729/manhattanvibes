@@ -2,7 +2,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
-  CheckCircle2, CircleDollarSign, CreditCard, Phone as PhoneIcon, ShoppingBag, Smartphone, Store, Truck, User as UserIcon, Wallet,
+  CheckCircle2, CircleDollarSign, CreditCard, Phone as PhoneIcon, ShoppingBag, Store, Truck, User as UserIcon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -13,15 +13,11 @@ import { useCart } from '@/lib/cart-store';
 import { fmtSAR } from '@/lib/format';
 
 type OrderType = 'pickup' | 'delivery';
-type PayMethod = 'cash' | 'mada' | 'visa' | 'mastercard' | 'applepay' | 'stcpay';
+type PayMethod = 'cash' | 'visa';
 
 const PAY_METHODS: Array<{ key: PayMethod; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { key: 'mada',       label: 'Mada',       icon: CreditCard },
-  { key: 'visa',       label: 'Visa',       icon: CreditCard },
-  { key: 'mastercard', label: 'MasterCard', icon: CreditCard },
-  { key: 'applepay',   label: 'Apple Pay',  icon: Smartphone },
-  { key: 'stcpay',     label: 'STC Pay',    icon: Wallet },
-  { key: 'cash',       label: 'Cash',       icon: CircleDollarSign },
+  { key: 'cash', label: 'Cash',        icon: CircleDollarSign },
+  { key: 'visa', label: 'Credit Card', icon: CreditCard },
 ];
 
 export default function CheckoutPage(): JSX.Element {
@@ -30,7 +26,7 @@ export default function CheckoutPage(): JSX.Element {
   const router = useRouter();
   const [type, setType] = useState<OrderType>('pickup');
   const [method, setMethod] = useState<PayMethod>('cash');
-  const [phone, setPhone] = useState('+966555000099');
+  const [phone, setPhone] = useState('+923001000099');
   const [name, setName] = useState('Guest');
   const [error, setError] = useState<string | null>(null);
 
@@ -119,7 +115,7 @@ export default function CheckoutPage(): JSX.Element {
           <Card title="1. Order type">
             <div className="grid grid-cols-2 gap-3">
               <TypeTile active={type === 'pickup'}   icon={Store} label="Pickup"    desc="Ready in 12 min"   onClick={() => setType('pickup')} />
-              <TypeTile active={type === 'delivery'} icon={Truck} label="Delivery"  desc="~25–35 min · 9 SAR" onClick={() => setType('delivery')} />
+              <TypeTile active={type === 'delivery'} icon={Truck} label="Delivery"  desc="~25–35 min · Rs 250" onClick={() => setType('delivery')} />
             </div>
           </Card>
 
@@ -129,7 +125,7 @@ export default function CheckoutPage(): JSX.Element {
                 <input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} />
               </Field>
               <Field label="Phone (E.164)" icon={PhoneIcon}>
-                <input className="input mt-1" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+966555..." />
+                <input className="input mt-1" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+92300..." />
               </Field>
             </div>
             <p className="text-xs text-stone-500 mt-3">

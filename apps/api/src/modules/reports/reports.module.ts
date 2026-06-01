@@ -3,7 +3,7 @@
  * Phase 2 will introduce nightly rollups + a warehouse for heavy BI.
  *
  * Operational note: "today's sales" counts all placed orders that aren't
- * CANCELLED or REFUNDED, bucketed by createdAt in Asia/Riyadh local time.
+ * CANCELLED or REFUNDED, bucketed by createdAt in Asia/Karachi local time.
  * A separate `paidGross` field shows captured-revenue only, so finance
  * and operations both see what they care about.
  */
@@ -22,8 +22,9 @@ export const reportsRouter: Router = Router();
 
 const EXCLUDE_STATES = ['CANCELLED', 'REFUNDED'];
 
-function dayBoundsKsa(date: string): { dayStart: Date; dayEnd: Date } {
-  const dayStart = new Date(`${date}T00:00:00+03:00`);
+function dayBoundsLocal(date: string): { dayStart: Date; dayEnd: Date } {
+  // Asia/Karachi is fixed +05:00 (no DST).
+  const dayStart = new Date(`${date}T00:00:00+05:00`);
   const dayEnd   = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
   return { dayStart, dayEnd };
 }
@@ -33,7 +34,7 @@ const dailySchema = z.object({ branchId: objectIdSchema, date: z.string().regex(
 reportsRouter.get('/sales/daily', requireAuth, requirePermission('reports:branch'),
   asyncHandler(async (req: Request, res: Response) => {
     const { branchId, date } = dailySchema.parse(req.query);
-    const { dayStart, dayEnd } = dayBoundsKsa(date);
+    const { dayStart, dayEnd } = dayBoundsLocal(date);
 
     const [agg] = await OrderModel.aggregate<{
       orders: number; gross: number; disc: number; vat: number; net: number; delivery: number;
@@ -85,7 +86,7 @@ reportsRouter.get('/sales/range', requireAuth, requirePermission('reports:branch
     if (branchId) match.branchId = new Types.ObjectId(branchId);
 
     const groupId: unknown =
-      groupBy === 'day'     ? { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Riyadh' } } :
+      groupBy === 'day'     ? { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Karachi' } } :
       groupBy === 'channel' ? '$channel' :
       groupBy === 'branch'  ? '$branchId' : '$_id';
 

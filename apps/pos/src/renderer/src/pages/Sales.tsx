@@ -18,7 +18,7 @@ export function Sales(): JSX.Element {
   const [activeCat, setActiveCat] = useState<string>('');
   const [cart, setCart] = useState<CartLine[]>([]);
   const [type, setType] = useState<'dinein' | 'takeaway' | 'delivery' | 'pickup'>('takeaway');
-  const [paying, setPaying] = useState<null | 'cash' | 'mada' | 'visa' | 'mastercard' | 'applepay' | 'stcpay'>(null);
+  const [paying, setPaying] = useState<null | 'cash' | 'visa'>(null);
   const [busyMsg, setBusyMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function Sales(): JSX.Element {
     setCart((c) => c.map((l) => l.id === lineId ? { ...l, qty: Math.max(1, qty) } : l));
   }
 
-  async function pay(method: 'cash' | 'mada' | 'visa' | 'mastercard' | 'applepay' | 'stcpay'): Promise<void> {
+  async function pay(method: 'cash' | 'visa'): Promise<void> {
     if (cart.length === 0) return;
     setPaying(method);
     setBusyMsg('Queueing order…');
@@ -154,8 +154,8 @@ export function Sales(): JSX.Element {
             <button className="btn-primary" disabled={cart.length === 0 || !!paying} onClick={() => void pay('cash')}>
               <Banknote className="h-4 w-4" /> Cash
             </button>
-            <button className="btn-primary" disabled={cart.length === 0 || !!paying} onClick={() => void pay('mada')}>
-              <CreditCard className="h-4 w-4" /> Card
+            <button className="btn-primary" disabled={cart.length === 0 || !!paying} onClick={() => void pay('visa')}>
+              <CreditCard className="h-4 w-4" /> Credit Card
             </button>
           </div>
           <button className="btn-ghost w-full" disabled={cart.length === 0} onClick={() => setCart([])}>

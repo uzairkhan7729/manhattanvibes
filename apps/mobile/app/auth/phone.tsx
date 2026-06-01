@@ -9,7 +9,7 @@ import { colors, radii, shadows, type as t } from '../../src/lib/theme';
 
 export default function PhoneScreen(): JSX.Element {
   const router = useRouter();
-  const [phone, setPhone] = useState('+966555000099');
+  const [phone, setPhone] = useState('+923001000099');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +47,7 @@ export default function PhoneScreen(): JSX.Element {
             onChangeText={setPhone}
             keyboardType="phone-pad"
             autoFocus
-            placeholder="+966555..."
+            placeholder="+92300..."
             placeholderTextColor={colors.ink[300]}
           />
           {error && <Text style={styles.error}>{error}</Text>}

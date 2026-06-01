@@ -11,15 +11,11 @@ import { fmtSAR } from '../src/lib/format';
 import { colors, radii, shadows, type as t } from '../src/lib/theme';
 
 type OrderType = 'pickup' | 'delivery';
-type PayMethod = 'cash' | 'mada' | 'visa' | 'mastercard' | 'applepay' | 'stcpay';
+type PayMethod = 'cash' | 'visa';
 
 const PAY: Array<{ key: PayMethod; label: string; icon: string }> = [
-  { key: 'cash',       label: 'Cash',       icon: '💵' },
-  { key: 'mada',       label: 'Mada',       icon: '💳' },
-  { key: 'visa',       label: 'Visa',       icon: '💳' },
-  { key: 'mastercard', label: 'MasterCard', icon: '💳' },
-  { key: 'applepay',   label: 'Apple Pay',  icon: '🍎' },
-  { key: 'stcpay',     label: 'STC Pay',    icon: '📱' },
+  { key: 'cash', label: 'Cash',        icon: '💵' },
+  { key: 'visa', label: 'Credit Card', icon: '💳' },
 ];
 
 export default function CheckoutScreen(): JSX.Element {
@@ -28,7 +24,7 @@ export default function CheckoutScreen(): JSX.Element {
   const router = useRouter();
   const [type, setType] = useState<OrderType>('pickup');
   const [method, setMethod] = useState<PayMethod>('cash');
-  const [phone, setPhone] = useState('+966555000099');
+  const [phone, setPhone] = useState('+923001000099');
   const [name, setName] = useState('Guest');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +103,7 @@ export default function CheckoutScreen(): JSX.Element {
         <Text style={styles.sec}>HOW TO GET IT</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Tile active={type === 'pickup'} icon="🏪" title="Pickup" desc="Ready in 12 min" onPress={() => setType('pickup')} />
-          <Tile active={type === 'delivery'} icon="🛵" title="Delivery" desc="25–35 min · 9 SAR" onPress={() => setType('delivery')} />
+          <Tile active={type === 'delivery'} icon="🛵" title="Delivery" desc="25–35 min · Rs 250" onPress={() => setType('delivery')} />
         </View>
 
         {/* Contact */}

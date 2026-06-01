@@ -1,6 +1,8 @@
-export function fmtSAR(halalas: number | undefined): string {
-  if (halalas == null) return '—';
-  return new Intl.NumberFormat('en-SA', { style: 'currency', currency: 'SAR', minimumFractionDigits: 2 }).format(halalas / 100);
+// Historically named fmtSAR; now formats Pakistani Rupees.
+export function fmtSAR(paisa: number | undefined): string {
+  if (paisa == null) return '—';
+  const rupees = Math.round(paisa / 100);
+  return `Rs ${rupees.toLocaleString('en-PK')}`;
 }
 
 export function newClientOpId(): string {

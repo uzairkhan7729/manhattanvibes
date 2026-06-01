@@ -33,11 +33,11 @@ export async function updateBranch(tenantId: string, id: string, patch: Partial<
 }
 
 /**
- * Atomically allocate the next order number for a branch. Resets at KSA midnight.
+ * Atomically allocate the next order number for a branch. Resets at PKT midnight.
  * Format: `<branchCode>-<n>` (zero-padded to 5). Globally unique by (branchId, orderNumber).
  */
 export async function nextOrderNumber(branchId: string): Promise<string> {
-  const ymd = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' }).replace(/-/g, '');
+  const ymd = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' }).replace(/-/g, '');
   // First, attempt counter advance only if we're in the same day. If day changed, reset to 1.
   const updated = await BranchModel.findOneAndUpdate(
     { _id: tid(branchId), 'orderSeq.ymd': ymd },

@@ -2,7 +2,7 @@ import type { Halalas } from '../../../shared/utils/halalas.js';
 
 export interface GatewayCreateIntentInput {
   amount: Halalas;
-  currency: 'SAR';
+  currency: 'PKR';
   orderRef: string;        // our order number
   returnUrl: string;
   metadata?: Record<string, string>;

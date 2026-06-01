@@ -3,9 +3,9 @@ import { Flame, Gift, Truck, Tag } from 'lucide-react';
 
 const items = [
   { icon: Flame, text: '50% OFF on your 1st app order' },
-  { icon: Truck, text: 'FREE delivery over 75 SAR' },
+  { icon: Truck, text: 'FREE delivery over Rs 2,000' },
   { icon: Gift,  text: 'Earn loyalty points on every order' },
-  { icon: Tag,   text: 'Family deals from 79 SAR' },
+  { icon: Tag,   text: 'Family deals from Rs 2,400' },
 ];
 
 export function PromoStrip(): JSX.Element {

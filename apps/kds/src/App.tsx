@@ -40,7 +40,7 @@ function KitchenScreen({ branchId, accessToken, now, onSignOut }: { branchId: st
             {connected ? <Wifi className="h-4 w-4 text-emerald-500" /> : <WifiOff className="h-4 w-4 text-red-500" />}
             <span className={connected ? 'text-emerald-400' : 'text-red-400'}>{connected ? 'live' : 'reconnecting…'}</span>
           </div>
-          <div className="font-mono text-slate-300">{now.toLocaleTimeString('en-SA', { timeZone: 'Asia/Riyadh' })}</div>
+          <div className="font-mono text-slate-300">{now.toLocaleTimeString('en-PK', { timeZone: 'Asia/Karachi' })}</div>
           <button className="p-2 rounded hover:bg-slate-800" title="Settings / Sign out" onClick={onSignOut}>
             <Settings className="h-4 w-4 text-slate-400" />
           </button>

@@ -76,7 +76,7 @@ export default async function HomePage(): Promise<JSX.Element> {
               tone="brand"
               badge="50% OFF"
               title="First app order, half price"
-              subtitle="New customers — your first order through the app is 50% off, up to 30 SAR. Auto-applied."
+              subtitle="New customers — your first order through the app is 50% off, up to Rs 800. Auto-applied."
               href="/menu"
               image={HERO_IMAGES[0]!.url}
               index={0}
@@ -84,7 +84,7 @@ export default async function HomePage(): Promise<JSX.Element> {
             <OfferCard
               tone="dark"
               badge="Family feast"
-              title="2 Large pizzas + sides — 79 SAR"
+              title="2 Large pizzas + sides — Rs 2,400"
               subtitle="Two large hand-tossed pizzas, fries and 4 drinks. Perfect for the whole table."
               href="/menu"
               image={HERO_IMAGES[1]!.url}

@@ -78,7 +78,7 @@ interface NewProductForm {
   nameEn: string;
   nameAr: string;
   type: 'simple' | 'configurable' | 'combo';
-  basePrice: string;        // SAR (UI), converted to halalas on submit
+  basePrice: string;        // PKR (UI), converted to paisa on submit
   isVeg: boolean;
   spicyLevel: 0 | 1 | 2 | 3;
   isActive: boolean;
@@ -104,7 +104,7 @@ function NewProductModal({ categories, onClose }: { categories: Category[]; onCl
       categoryId: f.categoryId,
       name: { en: f.nameEn.trim(), ...(f.nameAr.trim() ? { ar: f.nameAr.trim() } : {}) },
       type: f.type,
-      basePrice: Math.round(parseFloat(f.basePrice) * 100),    // SAR -> halalas
+      basePrice: Math.round(parseFloat(f.basePrice) * 100),    // PKR -> paisa
       isVeg: f.isVeg,
       spicyLevel: f.spicyLevel,
       isActive: f.isActive,
@@ -176,7 +176,7 @@ function NewProductModal({ categories, onClose }: { categories: Category[]; onCl
                 <option value="combo">Combo</option>
               </select>
             </Field>
-            <Field label="Base price (SAR) *">
+            <Field label="Base price (PKR) *">
               <input className="input" type="number" step="0.01" min="0" value={f.basePrice}
                      onChange={(e) => setF({ ...f, basePrice: e.target.value })} placeholder="29.50" />
             </Field>

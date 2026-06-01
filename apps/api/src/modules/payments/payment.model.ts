@@ -7,7 +7,7 @@ const PaymentSchema = new Schema(
     orderId:  { type: Schema.Types.ObjectId, ref: 'Order', required: true, index: true },
     method:   { type: String, enum: ['cash', 'mada', 'visa', 'mastercard', 'applepay', 'stcpay', 'wallet', 'loyalty'], required: true },
     amount:   { type: Number, required: true },
-    currency: { type: String, default: 'SAR' },
+    currency: { type: String, default: 'PKR' },
     status:   { type: String, enum: ['authorized', 'captured', 'failed', 'voided', 'refunded', 'partial-refunded'], required: true },
     gateway:  { type: String, enum: ['hyperpay', 'moyasar', 'checkout', 'stcpay-native', 'cash', 'sandbox'] },
     gatewayRefs: {
