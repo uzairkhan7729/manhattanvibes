@@ -5,6 +5,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 export interface CartLine {
   id: string;
   productId: string;
+  productSku?: string;           // for image lookup in cart UI
   productName: string;
   qty: number;
   estimatedUnitPrice: number;

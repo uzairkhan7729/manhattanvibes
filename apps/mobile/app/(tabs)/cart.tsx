@@ -37,7 +37,7 @@ export default function CartScreen(): JSX.Element {
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 140, gap: 10 }}>
         {cart.lines.map((l) => (
           <View key={l.id} style={styles.row}>
-            <Image source={{ uri: productImage(undefined) }} style={styles.img} contentFit="cover" />
+            <Image source={{ uri: productImage(l.productSku) }} style={styles.img} contentFit="cover" transition={200} />
             <View style={{ flex: 1, padding: 12 }}>
               <Text style={styles.title}>{l.productName}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>

@@ -90,6 +90,7 @@ export default function ProductDetail(): JSX.Element {
     if (!pid) return;
     cart.add({
       productId: pid,
+      productSku: product.sku,
       productName: product.name.en,
       qty,
       sizeCode, crustCode, sauceIds, toppingIds,

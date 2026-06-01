@@ -69,7 +69,7 @@ export default function MenuScreen(): JSX.Element {
       router.push(`/product/${p.id}`);
       return;
     }
-    cart.add({ productId: p.id, productName: p.name.en, qty: 1, estimatedUnitPrice: p.effectivePrice });
+    cart.add({ productId: p.id, productSku: p.sku, productName: p.name.en, qty: 1, estimatedUnitPrice: p.effectivePrice });
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     showToast(`${p.name.en} added`);
   }
