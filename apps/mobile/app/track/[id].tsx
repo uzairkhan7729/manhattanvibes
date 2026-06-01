@@ -68,15 +68,22 @@ export default function TrackScreen(): JSX.Element {
   }
 
   const visible = order.type === 'delivery' ? STEPS : STEPS.filter((s) => s.key !== 'OUT_FOR_DELIVERY');
-  const currentIdx = visible.findIndex((s) => s.key === order.state);
   const isWaiting = order.state === 'CREATED';
   const isCancelled = order.state === 'CANCELLED';
+  // CLOSED is the operational terminal state (admin closed the ticket). For
+  // delivery orders DELIVERED is the user-visible "done"; for pickup orders
+  // CLOSED happens straight after READY. Treat both as fully complete so the
+  // timeline fills out and the heading reflects it.
+  const isComplete = order.state === 'CLOSED' || order.state === 'DELIVERED';
+  const currentIdx = isComplete
+    ? visible.length - 1
+    : visible.findIndex((s) => s.key === order.state);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Header gradient */}
       <LinearGradient
-        colors={['#0c0a09', '#7c2d12']}
+        colors={isCancelled ? ['#0c0a09', '#7f1d1d'] : ['#0c0a09', '#7c2d12']}
         style={styles.heroGrad}
       >
         <SafeAreaView edges={['top']} style={styles.heroInner}>
@@ -84,8 +91,9 @@ export default function TrackScreen(): JSX.Element {
           <Text style={styles.title}>
             {isWaiting ? 'Waiting for the kitchen…' :
              isCancelled ? 'Order cancelled' :
-             currentIdx === visible.length - 1 ? 'Enjoy! 🎉' :
-             visible[currentIdx]?.label ?? 'In progress'}
+             isComplete
+               ? (order.type === 'delivery' ? 'Delivered  🎉' : 'Enjoy!  🎉')
+               : visible[currentIdx]?.label ?? 'In progress'}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
             <Text style={{ color: 'rgba(255,255,255,0.85)' }}>{order.type.toUpperCase()}</Text>
@@ -111,7 +119,7 @@ export default function TrackScreen(): JSX.Element {
 
         {visible.map((s, i) => {
           const reached = i <= currentIdx;
-          const active = i === currentIdx && !isCancelled;
+          const active = i === currentIdx && !isCancelled && !isComplete;
           return (
             <View key={s.key} style={styles.step}>
               <View style={styles.stepLeft}>
@@ -137,7 +145,11 @@ export default function TrackScreen(): JSX.Element {
         })}
       </View>
 
-      <Text style={styles.footer}>Updates live — no need to refresh.</Text>
+      <Text style={styles.footer}>
+        {isComplete ? 'Thanks for ordering with Manhattan Vibes ❤️' :
+         isCancelled ? '' :
+         'Updates live — no need to refresh.'}
+      </Text>
     </View>
   );
 }
