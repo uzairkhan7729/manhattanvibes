@@ -2,8 +2,8 @@ module.exports = function (api) {
   api.cache(true);
   return {
     presets: ['babel-preset-expo'],
-    // react-native-reanimated requires its plugin to be last in the list,
-    // otherwise worklets compile to no-ops at runtime.
-    plugins: ['react-native-reanimated/plugin'],
+    // Reanimated 4 split its worklets engine into 'react-native-worklets'.
+    // The babel plugin moved here too. Must be LAST in the plugins list.
+    plugins: ['react-native-worklets/plugin'],
   };
 };
