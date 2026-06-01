@@ -1,6 +1,10 @@
 # @mv/mobile — Customer Mobile App
 
-React Native 0.76 + Expo SDK 52 + Expo Router 4.
+React Native 0.81 + React 19 + Expo SDK 54 + Expo Router 6.
+
+> The SDK version tracks **the Expo Go app currently on the App Store / Play Store**.
+> Upgrade `expo` major version here when Expo ships a new SDK and you've installed
+> the matching Expo Go on your phone.
 
 ## Quick start (separate workflow from the rest of the monorepo)
 
@@ -8,8 +12,13 @@ Mobile requires Expo CLI + Android/iOS toolchain. Install deps inside `apps/mobi
 
 ```powershell
 cd apps/mobile
-npx expo install      # pulls compatible RN, expo-router, async-storage, secure-store, screens, safe-area-context
-npx expo start        # opens dev tools; press 'a' for Android emulator, 'i' for iOS sim, or scan QR with Expo Go
+
+# First-time setup or after pulling SDK-version bumps: nuke the cache & lockfile
+rm -r -fo node_modules; rm -fo package-lock.json
+npm install
+npx expo install --check   # verifies every package is on a version compatible with the installed Expo SDK
+
+npx expo start             # press 'a' for Android emulator, 'i' for iOS sim, 'w' for web, or scan QR with Expo Go
 ```
 
 The API base is read from `EXPO_PUBLIC_API_BASE`. For local development:
