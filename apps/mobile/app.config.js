@@ -9,8 +9,14 @@ module.exports = {
   scheme: 'manhattanvibes',
   version: '0.1.0',
   orientation: 'portrait',
-  userInterfaceStyle: 'automatic',
+  userInterfaceStyle: 'light',
   newArchEnabled: true,
+  // Custom branded splash. We keep the native splash brief, then a React-rendered
+  // splash takes over for the rest of the JS boot (see app/_layout.tsx).
+  splash: {
+    backgroundColor: '#0c0a09',
+    resizeMode: 'cover',
+  },
   ios: {
     bundleIdentifier: 'sa.manhattanvibes.app',
     supportsTablet: true,
@@ -19,9 +25,22 @@ module.exports = {
     package: 'sa.manhattanvibes.app',
     adaptiveIcon: { backgroundColor: '#f97316' },
   },
-  plugins: ['expo-router'],
+  plugins: [
+    'expo-router',
+    [
+      'expo-splash-screen',
+      {
+        backgroundColor: '#0c0a09',
+        image: undefined,
+        resizeMode: 'cover',
+        imageWidth: 200,
+      },
+    ],
+  ],
   experiments: { typedRoutes: true },
   extra: {
-    apiBase: process.env.EXPO_PUBLIC_API_BASE || 'http://localhost:8088',
+    // Falls back to localhost; the runtime auto-detects the Metro host IP
+    // (see src/lib/config.ts) so a real phone can reach the dev API.
+    apiBase: process.env.EXPO_PUBLIC_API_BASE || '',
   },
 };

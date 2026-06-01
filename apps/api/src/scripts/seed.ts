@@ -31,18 +31,18 @@ async function wipe(): Promise<void> {
   logger.info('seed: existing data wiped');
 }
 
-async function seedBranches(): Promise<{ ruh1: Types.ObjectId; jed1: Types.ObjectId }> {
-  const ruh1 = await BranchModel.create({
+async function seedBranches(): Promise<{ guj1: Types.ObjectId }> {
+  const guj1 = await BranchModel.create({
     tenantId: TENANT_ID,
-    code: 'RUH-1',
-    name: { ar: 'الرياض - الملقا', en: 'Riyadh — Malqa' },
+    code: 'GUJ-1',
+    name: { ar: 'فرع جوجارات', en: 'Gujrat Branch' },
     address: {
-      label: 'HQ', line1: 'Anas Ibn Malik Rd', city: 'Riyadh', district: 'Al Malqa',
-      country: 'SA', lat: 24.7777, lng: 46.6396,
+      label: 'Flagship', line1: 'GT Road, Gujrat', city: 'Gujrat', district: 'Civil Lines',
+      country: 'SA', lat: 32.5736, lng: 74.0779,
     },
-    contact: { phone: '+966112000001', email: 'ruh1@manhattanvibes.sa' },
+    contact: { phone: '+966114000001', email: 'gujrat@manhattanvibes.sa' },
     taxId: '310000000000001',
-    zatcaSerialPrefix: 'RUH1',
+    zatcaSerialPrefix: 'GUJ1',
     openingHours: [
       { day: 0, open: '11:00', close: '02:00' }, { day: 1, open: '11:00', close: '02:00' },
       { day: 2, open: '11:00', close: '02:00' }, { day: 3, open: '11:00', close: '02:00' },
@@ -52,22 +52,8 @@ async function seedBranches(): Promise<{ ruh1: Types.ObjectId; jed1: Types.Objec
     features: { dineIn: true, pickup: true, delivery: true, takeaway: true },
     status: 'active',
   });
-  const jed1 = await BranchModel.create({
-    tenantId: TENANT_ID,
-    code: 'JED-1',
-    name: { ar: 'جدة - الشاطئ', en: 'Jeddah — Corniche' },
-    address: {
-      label: 'Jeddah Flagship', line1: 'Corniche Rd', city: 'Jeddah', district: 'Al Shati',
-      country: 'SA', lat: 21.5810, lng: 39.1626,
-    },
-    contact: { phone: '+966122000001', email: 'jed1@manhattanvibes.sa' },
-    taxId: '310000000000002',
-    zatcaSerialPrefix: 'JED1',
-    features: { dineIn: true, pickup: true, delivery: true, takeaway: true },
-    status: 'active',
-  });
-  logger.info({ ruh1: ruh1._id.toString(), jed1: jed1._id.toString() }, 'seed: branches');
-  return { ruh1: ruh1._id, jed1: jed1._id };
+  logger.info({ guj1: guj1._id.toString() }, 'seed: branches (single)');
+  return { guj1: guj1._id };
 }
 
 async function seedUsers(branchIds: Types.ObjectId[]): Promise<void> {
@@ -190,7 +176,8 @@ async function seedCatalog(): Promise<void> {
 async function main(): Promise<void> {
   await connectMongo();
   await wipe();
-  const branches = await seedBranches();
+  const { guj1 } = await seedBranches();
+  const branches = { ruh1: guj1, jed1: guj1 };
   await seedUsers([branches.ruh1, branches.jed1]);
   await seedCatalog();
   await disconnectMongo();
